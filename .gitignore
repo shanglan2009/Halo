@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# 虚拟环境
+venv/
+.venv/
+env/
+
+# 环境变量
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 数据缓存
+data/cache/
+*.db
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# Vercel
+.vercel
+
+# 日志
+*.log
+logs/
+
+# Reasonix 内部状态（不提交）
+.reasonix/
+
+# Tushare token (敏感信息)
+tushare_token.txt

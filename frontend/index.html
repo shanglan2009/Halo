@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Halo - 中国股市投资分析系统</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>📈</text></svg>">
+</head>
+<body>
+    <!-- 顶部导航 -->
+    <header class="header">
+        <div class="container">
+            <h1 class="logo">
+                <span class="logo-icon">☀️</span>
+                Halo
+                <span class="logo-subtitle">投资分析系统</span>
+            </h1>
+            <nav class="nav">
+                <a href="#" class="nav-link active" data-tab="dashboard">仪表盘</a>
+                <a href="#" class="nav-link" data-tab="recommendations">推荐列表</a>
+                <a href="#" class="nav-link" data-tab="stock-pool">股票池</a>
+                <a href="#" class="nav-link" data-tab="about">关于</a>
+            </nav>
+            <div class="header-status">
+                <span id="status-dot" class="status-dot offline"></span>
+                <span id="status-text">加载中...</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="main">
+        <div class="container">
+            
+            <!-- 仪表盘 Tab -->
+            <section id="tab-dashboard" class="tab-content active">
+                <!-- 指数概览 -->
+                <div class="card-row">
+                    <div class="card index-card" id="sh-index-card">
+                        <div class="card-header">
+                            <h3>上证指数</h3>
+                            <span class="index-code">000001</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="index-price" id="sh-price">--</div>
+                            <div class="index-change" id="sh-change">--</div>
+                            <div class="index-returns">
+                                <span>1月: <b id="sh-1m">--</b></span>
+                                <span>3月: <b id="sh-3m">--</b></span>
+                                <span>1年: <b id="sh-1y">--</b></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card index-card" id="sz-index-card">
+                        <div class="card-header">
+                            <h3>深证成指</h3>
+                            <span class="index-code">399001</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="index-price" id="sz-price">--</div>
+                            <div class="index-change" id="sz-change">--</div>
+                            <div class="index-returns">
+                                <span>1月: <b id="sz-1m">--</b></span>
+                                <span>3月: <b id="sz-3m">--</b></span>
+                                <span>1年: <b id="sz-1y">--</b></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card macro-card">
+                        <div class="card-header">
+                            <h3>宏观分析框架</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="macro-items">
+                                <div class="macro-item">
+                                    <span class="macro-label">人口趋势</span>
+                                    <span class="macro-value negative">老龄化加速</span>
+                                </div>
+                                <div class="macro-item">
+                                    <span class="macro-label">债务周期</span>
+                                    <span class="macro-value neutral">去杠杆中后期</span>
+                                </div>
+                                <div class="macro-item">
+                                    <span class="macro-label">政策方向</span>
+                                    <span class="macro-value positive">科技自主+内需</span>
+                                </div>
+                                <div class="macro-item">
+                                    <span class="macro-label">社会趋势</span>
+                                    <span class="macro-value positive">消费升级+数字化</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 投资方向分析 -->
+                <div class="card analysis-card">
+                    <div class="card-header">
+                        <h3>🔍 未来中国投资机会分析</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="analysis-grid">
+                            <div class="analysis-item">
+                                <h4>🏥 老龄化 + 健康中国</h4>
+                                <p>中药（片仔癀、同仁堂）、医疗器械（迈瑞医疗）、创新药（恒瑞医药）</p>
+                                <span class="tag positive">确定性高</span>
+                            </div>
+                            <div class="analysis-item">
+                                <h4>💡 科技自主可控</h4>
+                                <p>半导体（中芯国际、北方华创）、AI（海康威视）、信创</p>
+                                <span class="tag positive">政策强力支持</span>
+                            </div>
+                            <div class="analysis-item">
+                                <h4>🌱 碳中和 + 新能源</h4>
+                                <p>水电（长江电力）、新能源（宁德时代、比亚迪）、核电</p>
+                                <span class="tag positive">长期趋势</span>
+                            </div>
+                            <div class="analysis-item">
+                                <h4>🏭 高股息 + 国企改革</h4>
+                                <p>银行（建设银行、工商银行）、能源（中国神华）、运营商（中国移动）</p>
+                                <span class="tag positive">防御+分红</span>
+                            </div>
+                            <div class="analysis-item">
+                                <h4>🍶 消费升级 + 国货崛起</h4>
+                                <p>白酒（贵州茅台、五粮液）、调味品（海天味业）、家电（美的集团）</p>
+                                <span class="tag neutral">品牌壁垒</span>
+                            </div>
+                            <div class="analysis-item">
+                                <h4>🌏 全球化 + 出海</h4>
+                                <p>家电出海（海尔智家）、工程机械、新能源出海</p>
+                                <span class="tag neutral">增量空间</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 快速推荐 -->
+                <div class="card" id="quick-recommendations-card">
+                    <div class="card-header">
+                        <h3>📊 核心推荐</h3>
+                        <span class="card-badge" id="rec-count">--</span>
+                    </div>
+                    <div class="card-body" id="quick-recommendations">
+                        <div class="loading">正在分析中...</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 推荐列表 Tab -->
+            <section id="tab-recommendations" class="tab-content">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>📋 完整推荐列表</h3>
+                        <div class="card-controls">
+                            <select id="sector-filter" class="filter-select">
+                                <option value="">全部行业</option>
+                                <option value="白酒">白酒</option>
+                                <option value="中药">中药</option>
+                                <option value="银行">银行</option>
+                                <option value="能源">能源</option>
+                                <option value="新能源">新能源</option>
+                                <option value="科技">科技</option>
+                                <option value="消费">消费</option>
+                                <option value="医药">医药</option>
+                                <option value="通信">通信</option>
+                            </select>
+                            <button id="refresh-btn" class="btn btn-primary">🔄 刷新数据</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-container">
+                            <table class="data-table" id="recommendations-table">
+                                <thead>
+                                    <tr>
+                                        <th>排名</th>
+                                        <th>股票</th>
+                                        <th>综合评分</th>
+                                        <th>IAS评分</th>
+                                        <th>时机评分</th>
+                                        <th>特征匹配</th>
+                                        <th>推荐等级</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recommendations-tbody">
+                                    <tr><td colspan="8" class="loading-cell">加载中...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 股票池 Tab -->
+            <section id="tab-stock-pool" class="tab-content">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>🎯 优质股票池</h3>
+                        <span class="card-subtitle">符合7大选股特征的标的</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="features-legend">
+                            <div class="feature-tag">1️⃣ 资产增值</div>
+                            <div class="feature-tag">2️⃣ 恒久需求</div>
+                            <div class="feature-tag">3️⃣ 内生增长</div>
+                            <div class="feature-tag">4️⃣ 高分红</div>
+                            <div class="feature-tag">5️⃣ 国有资本</div>
+                            <div class="feature-tag">6️⃣ 趋势受益</div>
+                            <div class="feature-tag">7️⃣ 政策方向</div>
+                        </div>
+                        <div class="table-container">
+                            <table class="data-table" id="pool-table">
+                                <thead>
+                                    <tr>
+                                        <th>代码</th>
+                                        <th>名称</th>
+                                        <th>行业</th>
+                                        <th>分红率</th>
+                                        <th>国有持股</th>
+                                        <th>推荐理由</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pool-tbody">
+                                    <tr><td colspan="6" class="loading-cell">加载中...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 关于 Tab -->
+            <section id="tab-about" class="tab-content">
+                <div class="card">
+                    <div class="card-header"><h3>📖 关于Halo系统</h3></div>
+                    <div class="card-body">
+                        <div class="about-content">
+                            <h4>选股逻辑</h4>
+                            <p><strong>股票选择（50%）+ 买入时机（50%）</strong></p>
+                            
+                            <h5>股票选择：IAS评分模型</h5>
+                            <ul>
+                                <li><strong>第一层：行业Alpha (25%)</strong> — 景气指数、盈利趋势、资金流、估值</li>
+                                <li><strong>第二层：公司Alpha (30%)</strong> — 估值、盈利能力、护城河、全球化能力</li>
+                                <li><strong>第三层：资金Alpha (25%)</strong> — 连续资金流、筹码集中度、机构行为</li>
+                                <li><strong>第四层：趋势Alpha (20%)</strong> — 截面动量、均线结构、成交量、波动率</li>
+                                <li><strong>事件驱动修正 (±10分)</strong></li>
+                            </ul>
+                            <p><strong>双重过滤：</strong>行业评分 &lt; 60 或 公司评分 &lt; 60 → 直接淘汰</p>
+
+                            <h5>买入时机：估值分析（满分50分）</h5>
+                            <ul>
+                                <li>历史PE分位 (20分)：0%-20%分位=20分</li>
+                                <li>行业PE比较 (10分)：≤0.8倍行业PE=10分</li>
+                                <li>均线位置 (10分)：低于MA250超10%=10分</li>
+                                <li>自由现金流收益率 (10分)：≥10%=10分</li>
+                            </ul>
+                            
+                            <h5>7大选股特征</h5>
+                            <ol>
+                                <li>资产随时间增值，越久越值钱</li>
+                                <li>产品无论朝代更替都恒久需求</li>
+                                <li>内生性增长，不需再投入</li>
+                                <li>高分红率</li>
+                                <li>中国国有资本投资加仓</li>
+                                <li>未来社会发展趋势中受益</li>
+                                <li>符合中国政府政策方向</li>
+                            </ol>
+
+                            <h5>定时刷新</h5>
+                            <p>每个交易日 <strong>9:25 / 13:05 / 14:50</strong> 自动刷新数据</p>
+                            
+                            <div class="disclaimer">
+                                <strong>⚠️ 免责声明：</strong>本系统仅供研究和学习参考，不构成任何投资建议。
+                                股市有风险，投资需谨慎。请独立做出投资决策。
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- 股票详情 Modal -->
+    <div class="modal-overlay" id="stock-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modal-title">股票详情</h2>
+                <button class="modal-close" onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                加载中...
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <p>Halo 投资分析系统 v1.0.0 | 数据来源：AkShare / 东方财富 | 部署于 Vercel</p>
+            <p class="footer-warning">⚠️ 仅供学习参考，不构成投资建议。股市有风险，投资需谨慎。</p>
+        </div>
+    </footer>
+
+    <script src="js/app.js"></script>
+</body>
+</html>

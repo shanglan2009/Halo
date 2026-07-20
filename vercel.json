@@ -1,0 +1,26 @@
+{
+  "buildCommand": "pip install -r requirements.txt",
+  "outputDirectory": "frontend",
+  "devCommand": "uvicorn api.index:app --host 0.0.0.0 --port 3000 --reload",
+  "framework": null,
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index.py"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/refresh?time=0925",
+      "schedule": "25 1 * * 1-5"
+    },
+    {
+      "path": "/api/cron/refresh?time=1305",
+      "schedule": "5 5 * * 1-5"
+    },
+    {
+      "path": "/api/cron/refresh?time=1450",
+      "schedule": "50 6 * * 1-5"
+    }
+  ]
+}
