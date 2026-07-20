@@ -27,7 +27,7 @@ from pydantic import BaseModel
 from scripts.ias_engine import ias_engine
 from scripts.timing_eval import timing_evaluator
 from scripts.data_collector import data_collector
-from scripts.recommendation import recommendation_engine, QUALITY_STOCK_POOL
+from scripts.recommendation import recommendation_engine, QUALITY_STOCK_POOL, filter_hs300
 from scripts.sim_engine import sim_engine
 
 # 创建FastAPI应用
@@ -317,7 +317,10 @@ async def get_recommendations(
     errors = []
     
     # 遍历优质股票池（全部评分，再按limit截断输出）
-    pool = QUALITY_STOCK_POOL
+    # 优先过滤沪深300成分股
+    hs300_data = load_cached_json("hs300_constituents.json")
+    hs300_codes = {s["symbol"] for s in hs300_data.get("stocks", [])} if hs300_data else set()
+    pool = filter_hs300(QUALITY_STOCK_POOL, hs300_codes)
     if sector:
         pool = [s for s in pool if sector in s.get("sector", "")]
     

@@ -617,6 +617,36 @@ class DataCollector:
             data["meta"]["_note"] = "部分数据使用默认值"
         
         return data
+    # ========== 沪深300成分股 ==========
+    
+    def get_hs300_constituents(self) -> list:
+        """获取沪深300指数成分股列表"""
+        cache_key = "hs300_constituents"
+        cached = self._load_cache(cache_key)
+        if cached and "stocks" in cached:
+            return cached["stocks"]
+        
+        try:
+            import akshare as ak
+            df = ak.index_stock_cons(symbol="000300")
+            if df is None or df.empty:
+                return []
+            
+            stocks = []
+            for _, row in df.iterrows():
+                code = str(row.get("品种代码", row.get("stock_code", "")))
+                name = str(row.get("品种名称", row.get("stock_name", "")))
+                if code:
+                    stocks.append({"symbol": code, "name": name})
+            
+            self._save_cache(cache_key, {"stocks": stocks, "count": len(stocks)})
+            return stocks
+        except ImportError:
+            return []
+        except Exception as e:
+            print(f"[WARN] 获取沪深300成分股失败: {e}", flush=True)
+            # 回退：使用缓存的成分股列表
+            return self._load_cache(cache_key).get("stocks", []) if self._load_cache(cache_key) else []
 
 
 # 创建全局采集器实例

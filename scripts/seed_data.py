@@ -10,7 +10,7 @@ sys.path.insert(0, PROJECT_ROOT)
 DATA_DIR = os.path.join(PROJECT_ROOT, "data")
 os.makedirs(DATA_DIR, exist_ok=True)
 
-from scripts.recommendation import recommendation_engine, QUALITY_STOCK_POOL
+from scripts.recommendation import recommendation_engine, QUALITY_STOCK_POOL, filter_hs300
 
 # 1. 指数数据（占位，GH Actions 会覆盖）
 index_data = {
@@ -45,7 +45,17 @@ def build_seed_stock_data(info: dict) -> dict:
     }
 
 recs = []
-for info in QUALITY_STOCK_POOL:
+# 过滤沪深300
+hs300_codes = set()
+hs300_path = os.path.join(DATA_DIR, "hs300_constituents.json")
+if os.path.exists(hs300_path):
+    try:
+        with open(hs300_path, "r", encoding="utf-8") as f:
+            hs300_codes = {s["symbol"] for s in json.load(f).get("stocks", [])}
+    except Exception:
+        pass
+pool = filter_hs300(QUALITY_STOCK_POOL, hs300_codes)
+for info in pool:
     sd = build_seed_stock_data(info)
     r = recommendation_engine.recommend(sd)
     d = r.to_dict()

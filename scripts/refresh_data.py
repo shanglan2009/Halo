@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from scripts.data_collector import data_collector
 from scripts.ias_engine import ias_engine
 from scripts.timing_eval import timing_evaluator
-from scripts.recommendation import recommendation_engine, QUALITY_STOCK_POOL
+from scripts.recommendation import recommendation_engine, QUALITY_STOCK_POOL, filter_hs300
 from scripts.sim_engine import sim_engine
 
 # 项目根目录
@@ -68,7 +68,19 @@ def refresh_stock_recommendations():
     errors = []
     success_count = 0
     
-    for i, stock_info in enumerate(QUALITY_STOCK_POOL):
+    # 过滤沪深300成分股
+    hs300_path = os.path.join(DATA_DIR, "hs300_constituents.json")
+    hs300_codes = set()
+    if os.path.exists(hs300_path):
+        try:
+            with open(hs300_path, "r", encoding="utf-8") as f:
+                hs300_codes = {s["symbol"] for s in json.load(f).get("stocks", [])}
+        except Exception:
+            pass
+    pool = filter_hs300(QUALITY_STOCK_POOL, hs300_codes)
+    print(f"  [HS300] 过滤后股票池: {len(pool)}/{len(QUALITY_STOCK_POOL)} 只")
+    
+    for i, stock_info in enumerate(pool):
         symbol = stock_info["symbol"]
         name = stock_info["name"]
         
@@ -119,7 +131,7 @@ def refresh_stock_recommendations():
     with open(path, "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=2)
     
-    print(f"\n  [OK] 成功: {success_count}/{len(QUALITY_STOCK_POOL)}")
+    print(f"\n  [OK] 成功: {success_count}/{len(pool)}")
     print(f"  [SAVE] 已保存到 {path}")
     return result
 
@@ -196,6 +208,22 @@ def main():
         "recommendations": None,
         "market_overview": None,
     }
+    
+    # 0. 同步沪深300成分股
+    try:
+        print("[HS300] 同步沪深300成分股...")
+        hs300 = data_collector.get_hs300_constituents()
+        if hs300:
+            hs300_path = os.path.join(DATA_DIR, "hs300_constituents.json")
+            with open(hs300_path, "w", encoding="utf-8") as f:
+                json.dump({
+                    "updated_at": datetime.now().isoformat(),
+                    "count": len(hs300),
+                    "stocks": hs300,
+                }, f, ensure_ascii=False, indent=2)
+            print(f"  [OK] 沪深300成分股: {len(hs300)} 只")
+    except Exception as e:
+        print(f"  [WARN] HS300同步失败: {e}")
     
     # 1. 指数数据
     try:

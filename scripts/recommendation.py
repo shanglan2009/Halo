@@ -543,5 +543,20 @@ QUALITY_STOCK_POOL = [
 ]
 
 
+def filter_hs300(pool: list = None, hs300_codes: set = None) -> list:
+    """过滤股票池，仅保留沪深300成分股"""
+    if pool is None:
+        pool = QUALITY_STOCK_POOL
+    if not hs300_codes:
+        return pool  # 无法获取成分股时不过滤
+    
+    filtered = [s for s in pool if s["symbol"] in hs300_codes]
+    if not filtered:
+        # 如果全部被过滤，至少保留银行/能源等核心标的
+        core = ["601939", "601398", "601288", "600036", "601088", "600900", "600519", "000858"]
+        filtered = [s for s in pool if s["symbol"] in core]
+    return filtered
+
+
 # 创建全局推荐引擎实例
 recommendation_engine = RecommendationEngine()

@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-07-20T23:37:51.844396",
+  "updated_at": "2026-07-20T23:58:51.475437",
   "total": 30,
   "success_count": 30,
   "recommendations": [
@@ -75,6 +75,8 @@
           "industry_avg_pe": 20,
           "pe_to_industry": 0.75,
           "fcf_yield_pct": 6.25,
+          "price": 100,
+          "ma250": 85,
           "ma250_position": 0.1765
         }
       },
@@ -174,6 +176,8 @@
           "industry_avg_pe": 20,
           "pe_to_industry": 0.75,
           "fcf_yield_pct": 6.25,
+          "price": 100,
+          "ma250": 85,
           "ma250_position": 0.1765
         }
       },
@@ -273,6 +277,8 @@
           "industry_avg_pe": 20,
           "pe_to_industry": 0.75,
           "fcf_yield_pct": 6.25,
+          "price": 100,
+          "ma250": 85,
           "ma250_position": 0.1765
         }
       },
@@ -372,6 +378,8 @@
           "industry_avg_pe": 20,
           "pe_to_industry": 0.75,
           "fcf_yield_pct": 6.25,
+          "price": 100,
+          "ma250": 85,
           "ma250_position": 0.1765
         }
       },
@@ -471,6 +479,8 @@
           "industry_avg_pe": 20,
           "pe_to_industry": 0.75,
           "fcf_yield_pct": 6.25,
+          "price": 100,
+          "ma250": 85,
           "ma250_position": 0.1765
         }
       },
@@ -570,6 +580,8 @@
           "industry_avg_pe": 20,
           "pe_to_industry": 0.75,
           "fcf_yield_pct": 6.25,
+          "price": 100,
+          "ma250": 85,
           "ma250_position": 0.1765
         }
       },
@@ -669,6 +681,8 @@
           "industry_avg_pe": 20,
           "pe_to_industry": 0.75,
           "fcf_yield_pct": 6.25,
+          "price": 100,
+          "ma250": 85,
           "ma250_position": 0.1765
         }
       },
@@ -768,6 +782,8 @@
           "industry_avg_pe": 20,
           "pe_to_industry": 0.75,
           "fcf_yield_pct": 6.25,
+          "price": 100,
+          "ma250": 85,
           "ma250_position": 0.1765
         }
       },
@@ -867,6 +883,8 @@
           "industry_avg_pe": 20,
           "pe_to_industry": 0.75,
           "fcf_yield_pct": 6.25,
+          "price": 100,
+          "ma250": 85,
           "ma250_position": 0.1765
         }
       },
@@ -966,6 +984,8 @@
           "industry_avg_pe": 20,
           "pe_to_industry": 0.75,
           "fcf_yield_pct": 6.25,
+          "price": 100,
+          "ma250": 85,
           "ma250_position": 0.1765
         }
       },
@@ -1065,6 +1085,8 @@
           "industry_avg_pe": 20,
           "pe_to_industry": 0.75,
           "fcf_yield_pct": 6.25,
+          "price": 100,
+          "ma250": 85,
           "ma250_position": 0.1765
         }
       },
@@ -1164,6 +1186,8 @@
           "industry_avg_pe": 20,
           "pe_to_industry": 0.75,
           "fcf_yield_pct": 6.25,
+          "price": 100,
+          "ma250": 85,
           "ma250_position": 0.1765
         }
       },
@@ -1263,6 +1287,8 @@
           "industry_avg_pe": 20,
           "pe_to_industry": 0.75,
           "fcf_yield_pct": 6.25,
+          "price": 100,
+          "ma250": 85,
           "ma250_position": 0.1765
         }
       },
@@ -1362,6 +1388,8 @@
           "industry_avg_pe": 20,
           "pe_to_industry": 0.75,
           "fcf_yield_pct": 6.25,
+          "price": 100,
+          "ma250": 85,
           "ma250_position": 0.1765
         }
       },
@@ -1461,6 +1489,8 @@
           "industry_avg_pe": 20,
           "pe_to_industry": 0.75,
           "fcf_yield_pct": 6.25,
+          "price": 100,
+          "ma250": 85,
           "ma250_position": 0.1765
         }
       },
@@ -1560,6 +1590,8 @@
           "industry_avg_pe": 20,
           "pe_to_industry": 0.75,
           "fcf_yield_pct": 6.25,
+          "price": 100,
+          "ma250": 85,
           "ma250_position": 0.1765
         }
       },
@@ -1659,6 +1691,8 @@
           "industry_avg_pe": 20,
           "pe_to_industry": 0.75,
           "fcf_yield_pct": 6.25,
+          "price": 100,
+          "ma250": 85,
           "ma250_position": 0.1765
         }
       },
@@ -1758,6 +1792,8 @@
           "industry_avg_pe": 20,
           "pe_to_industry": 0.75,
           "fcf_yield_pct": 6.25,
+          "price": 100,
+          "ma250": 85,
           "ma250_position": 0.1765
         }
       },
@@ -1857,6 +1893,8 @@
           "industry_avg_pe": 20,
           "pe_to_industry": 0.75,
           "fcf_yield_pct": 6.25,
+          "price": 100,
+          "ma250": 85,
           "ma250_position": 0.1765
         }
       },
@@ -1956,6 +1994,8 @@
           "industry_avg_pe": 20,
           "pe_to_industry": 0.75,
           "fcf_yield_pct": 6.25,
+          "price": 100,
+          "ma250": 85,
           "ma250_position": 0.1765
         }
       },
@@ -2055,6 +2095,8 @@
           "industry_avg_pe": 20,
           "pe_to_industry": 0.75,
           "fcf_yield_pct": 6.25,
+          "price": 100,
+          "ma250": 85,
           "ma250_position": 0.1765
         }
       },
@@ -2154,6 +2196,8 @@
           "industry_avg_pe": 20,
           "pe_to_industry": 0.75,
           "fcf_yield_pct": 6.25,
+          "price": 100,
+          "ma250": 85,
           "ma250_position": 0.1765
         }
       },
@@ -2253,6 +2297,8 @@
           "industry_avg_pe": 20,
           "pe_to_industry": 0.75,
           "fcf_yield_pct": 6.25,
+          "price": 100,
+          "ma250": 85,
           "ma250_position": 0.1765
         }
       },
@@ -2352,6 +2398,8 @@
           "industry_avg_pe": 20,
           "pe_to_industry": 0.75,
           "fcf_yield_pct": 6.25,
+          "price": 100,
+          "ma250": 85,
           "ma250_position": 0.1765
         }
       },
@@ -2451,6 +2499,8 @@
           "industry_avg_pe": 20,
           "pe_to_industry": 0.75,
           "fcf_yield_pct": 6.25,
+          "price": 100,
+          "ma250": 85,
           "ma250_position": 0.1765
         }
       },
@@ -2550,6 +2600,8 @@
           "industry_avg_pe": 20,
           "pe_to_industry": 0.75,
           "fcf_yield_pct": 6.25,
+          "price": 100,
+          "ma250": 85,
           "ma250_position": 0.1765
         }
       },
@@ -2649,6 +2701,8 @@
           "industry_avg_pe": 20,
           "pe_to_industry": 0.75,
           "fcf_yield_pct": 6.25,
+          "price": 100,
+          "ma250": 85,
           "ma250_position": 0.1765
         }
       },
@@ -2748,6 +2802,8 @@
           "industry_avg_pe": 20,
           "pe_to_industry": 0.75,
           "fcf_yield_pct": 6.25,
+          "price": 100,
+          "ma250": 85,
           "ma250_position": 0.1765
         }
       },
@@ -2847,6 +2903,8 @@
           "industry_avg_pe": 20,
           "pe_to_industry": 0.75,
           "fcf_yield_pct": 6.25,
+          "price": 100,
+          "ma250": 85,
           "ma250_position": 0.1765
         }
       },
@@ -2946,6 +3004,8 @@
           "industry_avg_pe": 20,
           "pe_to_industry": 0.75,
           "fcf_yield_pct": 6.25,
+          "price": 100,
+          "ma250": 85,
           "ma250_position": 0.1765
         }
       },
