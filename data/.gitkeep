@@ -1,0 +1,5 @@
+# 此目录存储 GitHub Actions 定时刷新的数据文件
+# - index_data.json      : 上证/深成指数数据
+# - recommendations.json : IAS评分推荐结果
+# - market_overview.json : 市场概览
+# - refresh_status.json  : 刷新状态

@@ -82,6 +82,20 @@ def cache_set(key: str, data):
 
 # ========== 离线数据构建（无需akshare） ==========
 
+# 数据文件目录（GitHub Actions 定时刷新的 JSON 缓存）
+DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
+
+def load_cached_json(filename: str) -> dict | None:
+    """加载 GitHub Actions 预计算的数据缓存"""
+    path = os.path.join(DATA_DIR, filename)
+    if os.path.exists(path):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return None
+
 def build_offline_stock_data(stock_info: dict) -> dict:
     """
     基于预定义股票池元数据构建评分所需数据，无需实时数据源。
@@ -246,6 +260,14 @@ async def get_index_data(index_code: str = Query("sh000001", description="指数
     if cached:
         return JSONResponse({"success": True, "data": cached, "timestamp": datetime.now().isoformat()})
     
+    # 优先使用 GitHub Actions 预计算的指数数据
+    index_cache = load_cached_json("index_data.json")
+    if index_cache:
+        idx = index_cache.get("indices", {}).get(index_code)
+        if idx and "error" not in idx:
+            cache_set(cache_key, idx)
+            return JSONResponse({"success": True, "data": idx, "timestamp": datetime.now().isoformat()})
+    
     data = data_collector.get_index_data(index_code)
     if "error" in data:
         print(f"[ERROR] 指数数据获取失败 {index_code}: {data['error']}", flush=True)
@@ -272,6 +294,23 @@ async def get_recommendations(
         cached = cache_get(cache_key)
         if cached:
             return JSONResponse({"success": True, "data": cached, "timestamp": datetime.now().isoformat()})
+    
+    # 优先使用 GitHub Actions 预计算的数据
+    cached_data = load_cached_json("recommendations.json")
+    if cached_data and not refresh:
+        recs = cached_data.get("recommendations", [])
+        if sector:
+            recs = [r for r in recs if sector in r.get("reason", "") or sector in r.get("name", "")]
+        recs = [r for r in recs[:limit] if r["final_score"] >= min_score]
+        response_data = {
+            "recommendations": recs,
+            "total": len(recs),
+            "errors": cached_data.get("errors", []),
+            "timestamp": cached_data.get("updated_at", datetime.now().isoformat()),
+            "note": f"数据来自 GitHub Actions 定时刷新 ({cached_data.get('updated_at', '未知')})",
+        }
+        cache_set(cache_key, response_data)
+        return JSONResponse({"success": True, "data": response_data, "timestamp": datetime.now().isoformat()})
     
     results = []
     errors = []
@@ -465,6 +504,12 @@ async def market_overview():
     cached = cache_get(cache_key)
     if cached:
         return JSONResponse({"success": True, "data": cached, "timestamp": datetime.now().isoformat()})
+    
+    # 优先使用 GitHub Actions 预计算的市场概览
+    cached_overview = load_cached_json("market_overview.json")
+    if cached_overview:
+        cache_set(cache_key, cached_overview)
+        return JSONResponse({"success": True, "data": cached_overview, "timestamp": datetime.now().isoformat()})
     
     overview = {
         "indices": {},
