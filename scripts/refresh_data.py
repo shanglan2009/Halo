@@ -85,7 +85,7 @@ def refresh_stock_recommendations():
         name = stock_info["name"]
         
         try:
-            print(f"  [{i+1}/{len(QUALITY_STOCK_POOL)}] {name} ({symbol})...", end=" ")
+            print(f"  [{i+1}/{len(pool)}] {name} ({symbol})...", end=" ")
             
             # 采集数据
             stock_data = data_collector.collect_stock_data(symbol, name)
