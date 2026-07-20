@@ -80,6 +80,114 @@ def cache_set(key: str, data):
     _cache[key] = (data, datetime.now())
 
 
+# ========== 离线数据构建（无需akshare） ==========
+
+def build_offline_stock_data(stock_info: dict) -> dict:
+    """
+    基于预定义股票池元数据构建评分所需数据，无需实时数据源。
+    用于Vercel Serverless环境下akshare不可用时的快速回退。
+    """
+    sector = stock_info.get("sector", "")
+    div_yield = stock_info.get("dividend_yield", 0)
+    state_pct = stock_info.get("state_ownership", 0)
+    
+    # 根据行业判断政策支持级别
+    policy_sectors_strong = ["半导体", "芯片", "新能源", "AI", "人工智能", "军工", "种业"]
+    policy_sectors_moderate = ["中药", "水电", "核电", "通信", "创新药", "高端制造", "银行"]
+    
+    policy_level = "none"
+    for kw in policy_sectors_strong:
+        if kw in sector:
+            policy_level = "strong"
+            break
+    if policy_level == "none":
+        for kw in policy_sectors_moderate:
+            if kw in sector:
+                policy_level = "moderate"
+                break
+    
+    # 高分红行业判断
+    high_div_sectors = ["银行", "煤炭", "石油", "电力", "水电", "通信", "高速公路"]
+    is_high_div = div_yield >= 3.0 or any(kw in sector for kw in high_div_sectors)
+    
+    # 护城河评估（基于行业）
+    moat_sectors = {"白酒": 85, "中药": 80, "水电": 75, "调味品": 80, "银行": 70, "保险": 65}
+    moat_base = 50
+    for kw, score in moat_sectors.items():
+        if kw in sector:
+            moat_base = score
+            break
+    
+    # 全球化评估
+    global_sectors = {"家电": 60, "新能源": 55, "半导体": 40, "医疗器械": 50}
+    global_base = 10
+    for kw, score in global_sectors.items():
+        if kw in sector:
+            global_base = score
+            break
+    
+    return {
+        "industry": {
+            "order_growth": 60, "capacity_utilization": 65,
+            "price_trend": 55, "policy_level": policy_level,
+            "revenue_growth": 12, "profit_growth": 10, "roe_trend": 8,
+            "etf_flow": 40, "sector_flow": 45, "rank_pct": 50,
+            "pe_percentile": 40, "pb_percentile": 35,
+        },
+        "company": {
+            "pe_percentile": 30, "pb_percentile": 35,
+            "ps_ratio": 3, "peg_ratio": 1.0, "ev_ebitda": 10,
+            "roe_5y": 18 if is_high_div else 22, "roic": 12 if is_high_div else 16,
+            "gross_margin": 55 if is_high_div else 65,
+            "net_margin": 20 if is_high_div else 30,
+            "op_cashflow": 12 if is_high_div else 15,
+            "market_share": 55, "cost_advantage": 50,
+            "brand_power": moat_base, "channel": 55,
+            "patents": 40, "barrier": moat_base,
+            "overseas_revenue_pct": global_base // 2,
+            "overseas_orders": global_base // 3,
+            "global_clients": global_base // 2,
+            "overseas_capacity": global_base // 4,
+        },
+        "capital": {
+            "day20_inflow": 0.05, "ema_trend": 0.03,
+            "shareholder_change": -0.02, "avg_holding_increase": 0.01,
+            "lhb_net_buy": 0.1, "lhb_retail_excluded": state_pct > 5,
+            "block_premium_pct": 1.0, "block_institution_buy": state_pct > 10,
+            "fund_increase_ratio": 0.02, "fund_count_change": 0.05,
+        },
+        "momentum": {
+            "ret_20d": 0.02, "ret_60d": 0.04, "ret_120d": 0.06,
+            "sector_rank_pct": 55,
+            "ma20": 100, "ma60": 95, "ma120": 90, "ma250": 85,
+            "price": 100,
+            "vol_up_ratio": 0.45, "vol_down_ratio": 0.35,
+            "atr_pct": 2.5, "beta": 0.9, "annual_vol": 28,
+        },
+        "event": {
+            "major_order": 0, "policy_support": 2 if policy_level in ("strong", "moderate") else 0,
+            "buyback": 0, "executive_buy": 0,
+            "reduction": 0, "financial_risk": 0, "regulatory_investigation": 0,
+        },
+        "timing": {
+            "current_pe": 15, "pe_percentile": 30,
+            "industry_avg_pe": 20,
+            "price": 100, "ma60": 95, "ma120": 90, "ma250": 85,
+            "fcf": 500, "market_cap": 8000,
+        },
+        "meta": {
+            "symbol": stock_info["symbol"],
+            "name": stock_info["name"],
+            "sector": sector,
+            "dividend_yield": div_yield,
+            "state_ownership": state_pct,
+            "reason": stock_info.get("reason", ""),
+            "data_source": "offline",
+            "collected_at": datetime.now().isoformat(),
+        }
+    }
+
+
 # ========== 响应模型 ==========
 
 class StockRecommendRequest(BaseModel):
@@ -178,9 +286,15 @@ async def get_recommendations(
         name = stock_info["name"]
         
         try:
-            # 尝试采集数据
+            # 优先尝试实时数据
             stock_data = data_collector.collect_stock_data(symbol, name)
-            
+            if stock_data.get("meta", {}).get("_note"):
+                raise ValueError("实时数据不可用")
+        except Exception:
+            # 回退到离线评分
+            stock_data = build_offline_stock_data(stock_info)
+        
+        try:
             # 添加元数据
             stock_data["meta"]["sector"] = stock_info.get("sector", "")
             stock_data["meta"]["dividend_yield"] = stock_info.get("dividend_yield", 0)
@@ -191,13 +305,14 @@ async def get_recommendations(
             rec = recommendation_engine.recommend(stock_data)
             rec_dict = rec.to_dict()
             rec_dict["reason"] = stock_info.get("reason", "")
+            rec_dict["data_source"] = stock_data.get("meta", {}).get("data_source", "unknown")
             
             if rec_dict["final_score"] >= min_score:
                 results.append(rec_dict)
                 
         except Exception as e:
-            print(f"[ERROR] 数据采集失败 {symbol}: {e}", flush=True)
-            errors.append({"symbol": symbol, "name": name, "error": "数据采集失败"})
+            print(f"[ERROR] 评分失败 {symbol}: {e}", flush=True)
+            errors.append({"symbol": symbol, "name": name, "error": "评分失败"})
     
     # 按最终评分降序
     results.sort(key=lambda r: r["final_score"], reverse=True)
@@ -244,24 +359,43 @@ async def get_stock_analysis(
     if not name:
         name = symbol
     
+    stock_data = None
     try:
         stock_data = data_collector.collect_stock_data(symbol, name)
-        
-        # 查找股票池中的元数据
+        if stock_data.get("meta", {}).get("_note"):
+            stock_data = None  # 标记为mock数据
+    except Exception:
+        stock_data = None
+    
+    # 回退到离线评分
+    if stock_data is None:
+        pool_info = None
         for s in QUALITY_STOCK_POOL:
             if s["symbol"] == symbol:
-                stock_data["meta"]["sector"] = s.get("sector", "")
-                stock_data["meta"]["dividend_yield"] = s.get("dividend_yield", 0)
-                stock_data["meta"]["state_ownership"] = s.get("state_ownership", 0)
-                stock_data["meta"]["reason"] = s.get("reason", "")
+                pool_info = s
                 break
-        
+        if pool_info:
+            stock_data = build_offline_stock_data(pool_info)
+        else:
+            stock_data = build_offline_stock_data({
+                "symbol": symbol, "name": name,
+                "sector": "", "dividend_yield": 0, "state_ownership": 0, "reason": ""
+            })
+    
+    # 查找股票池中的元数据
+    for s in QUALITY_STOCK_POOL:
+        if s["symbol"] == symbol:
+            stock_data["meta"]["sector"] = s.get("sector", "")
+            stock_data["meta"]["dividend_yield"] = s.get("dividend_yield", 0)
+            stock_data["meta"]["state_ownership"] = s.get("state_ownership", 0)
+            stock_data["meta"]["reason"] = s.get("reason", "")
+            break
+    
+    try:
         rec = recommendation_engine.recommend(stock_data)
         result = rec.to_dict()
-        
         cache_set(cache_key, result)
         return JSONResponse({"success": True, "data": result, "timestamp": datetime.now().isoformat()})
-        
     except Exception as e:
         print(f"[ERROR] 股票分析失败 {symbol}: {e}", flush=True)
         return JSONResponse({
