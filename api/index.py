@@ -12,6 +12,7 @@ Halo - 中国股市投资分析系统 API
 import sys
 import os
 import json
+import secrets
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -46,25 +47,17 @@ app.add_middleware(
 
 # ========== 安全配置 ==========
 CRON_SECRET = os.environ.get("CRON_SECRET", "")
-# 若未配置CRON_SECRET，允许本地开发环境无鉴权访问
-DEV_MODE = os.environ.get("VERCEL_ENV", "development") == "development" and not os.environ.get("VERCEL")
 
 def verify_cron_secret(request) -> bool:
     """验证定时任务密钥
-    Vercel Cron Jobs 通过 Authorization header 发送 CRON_SECRET
-    本地开发环境自动放行
+    Vercel Cron Jobs 通过 Authorization: Bearer <CRON_SECRET> header 发送密钥。
+    本地开发时设置环境变量 CRON_SECRET=dev 即可。
     """
-    if DEV_MODE and not CRON_SECRET:
-        return True  # 本地开发允许
     if not CRON_SECRET:
-        return False  # 生产环境未配置则拒绝
-    # 检查 Authorization header (Vercel Cron Jobs 标准方式)
+        return False  # 未配置密钥，拒绝所有请求
     auth_header = request.headers.get("Authorization", "")
-    if auth_header == f"Bearer {CRON_SECRET}":
-        return True
-    # 也支持 query param 方式 (手动调用/调试)
-    query_secret = request.query_params.get("secret", "")
-    return query_secret == CRON_SECRET
+    expected = f"Bearer {CRON_SECRET}"
+    return secrets.compare_digest(auth_header, expected)
 
 
 # ========== 数据缓存 ==========
@@ -270,7 +263,7 @@ async def get_stock_analysis(
     except Exception as e:
         return JSONResponse({
             "success": False,
-            "message": f"分析失败: {str(e)}",
+            "message": "分析失败，请稍后重试",
             "timestamp": datetime.now().isoformat()
         }, status_code=500)
 
@@ -426,7 +419,7 @@ async def cron_refresh(
     except Exception as e:
         return JSONResponse({
             "success": False,
-            "message": f"刷新失败: {str(e)}",
+            "message": "数据刷新失败，请稍后重试",
             "timestamp": datetime.now().isoformat()
         }, status_code=500)
 
