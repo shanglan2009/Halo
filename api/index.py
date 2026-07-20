@@ -195,7 +195,8 @@ async def get_recommendations(
                 results.append(rec_dict)
                 
         except Exception as e:
-            errors.append({"symbol": symbol, "name": name, "error": str(e)})
+            print(f"[ERROR] 数据采集失败 {symbol}: {e}", flush=True)
+            errors.append({"symbol": symbol, "name": name, "error": "数据采集失败"})
     
     # 按最终评分降序
     results.sort(key=lambda r: r["final_score"], reverse=True)
@@ -308,7 +309,8 @@ async def batch_analysis(request: StockRecommendRequest):
             results.append(rec_dict)
             
         except Exception as e:
-            errors.append({"symbol": symbol, "error": str(e)})
+            print(f"[ERROR] 批量分析失败 {symbol}: {e}", flush=True)
+            errors.append({"symbol": symbol, "error": "分析失败"})
     
     results.sort(key=lambda r: r["final_score"], reverse=True)
     
@@ -380,7 +382,8 @@ async def cron_refresh(
     - 13:05 (UTC 5:05) - 午盘开盘后
     - 14:50 (UTC 6:50) - 收盘前
     
-    需要 CRON_SECRET 环境变量鉴权（本地开发环境自动放行）
+    需要 CRON_SECRET 环境变量鉴权
+    本地开发设置 CRON_SECRET=dev 即可
     Vercel Cron Jobs 自动通过 Authorization header 发送密钥
     """
     if not verify_cron_secret(request):
