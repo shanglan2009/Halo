@@ -432,21 +432,28 @@ async def batch_analysis(request: StockRecommendRequest):
         
         try:
             stock_data = data_collector.collect_stock_data(symbol, name)
-            if meta:
-                stock_data["meta"]["sector"] = meta.get("sector", "")
-                stock_data["meta"]["dividend_yield"] = meta.get("dividend_yield", 0)
-                stock_data["meta"]["state_ownership"] = meta.get("state_ownership", 0)
-                stock_data["meta"]["reason"] = meta.get("reason", "")
-            
-            rec = recommendation_engine.recommend(stock_data)
-            rec_dict = rec.to_dict()
-            if meta:
-                rec_dict["reason"] = meta.get("reason", "")
-            results.append(rec_dict)
-            
-        except Exception as e:
-            print(f"[ERROR] 批量分析失败 {symbol}: {e}", flush=True)
-            errors.append({"symbol": symbol, "error": "分析失败"})
+            if stock_data.get("meta", {}).get("_note"):
+                stock_data = build_offline_stock_data(meta if meta else {
+                    "symbol": symbol, "name": name,
+                    "sector": "", "dividend_yield": 0, "state_ownership": 0, "reason": ""
+                })
+        except Exception:
+            stock_data = build_offline_stock_data(meta if meta else {
+                "symbol": symbol, "name": name,
+                "sector": "", "dividend_yield": 0, "state_ownership": 0, "reason": ""
+            })
+        
+        if meta:
+            stock_data["meta"]["sector"] = meta.get("sector", "")
+            stock_data["meta"]["dividend_yield"] = meta.get("dividend_yield", 0)
+            stock_data["meta"]["state_ownership"] = meta.get("state_ownership", 0)
+            stock_data["meta"]["reason"] = meta.get("reason", "")
+        
+        rec = recommendation_engine.recommend(stock_data)
+        rec_dict = rec.to_dict()
+        if meta:
+            rec_dict["reason"] = meta.get("reason", "")
+        results.append(rec_dict)
     
     results.sort(key=lambda r: r["final_score"], reverse=True)
     

@@ -612,6 +612,10 @@ class DataCollector:
             }
         }
         
+        # 检测是否有子模块返回mock数据，传播_note标记
+        if financial.get("_note") or valuation.get("_note"):
+            data["meta"]["_note"] = "部分数据使用默认值"
+        
         return data
 
 
