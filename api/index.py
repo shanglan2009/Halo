@@ -315,12 +315,12 @@ async def get_recommendations(
     results = []
     errors = []
     
-    # 遍历优质股票池
+    # 遍历优质股票池（全部评分，再按limit截断输出）
     pool = QUALITY_STOCK_POOL
     if sector:
         pool = [s for s in pool if sector in s.get("sector", "")]
     
-    for stock_info in pool[:limit]:
+    for stock_info in pool:
         symbol = stock_info["symbol"]
         name = stock_info["name"]
         
@@ -351,6 +351,9 @@ async def get_recommendations(
     
     # 按最终评分降序
     results.sort(key=lambda r: r["final_score"], reverse=True)
+    
+    # 截断到limit
+    results = results[:limit]
     
     response_data = {
         "recommendations": results,
