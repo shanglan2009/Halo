@@ -213,16 +213,15 @@ def main():
     try:
         print("\n[SIM] 处理模拟交易...")
         recs = results["recommendations"]["recommendations"] if results["recommendations"] else []
-        # 构建价格映射（使用推荐数据中的当前价近似开盘价）
+        # 构建价格映射（从timing_details获取实际价格）
         price_map = {}
         for r in recs:
-            timing = r.get("timing_details", {})
-            details = timing.get("details", {})
-            price = details.get("current_pe", 0)  # fallback
-            # 尝试从ias_details获取价格
-            ias = r.get("ias_details", {})
-            mom = ias.get("details", {}).get("momentum", {})
-            price = mom.get("ma250", 0) or price  # 用MA250近似
+            details = r.get("timing_details", {}).get("details", {})
+            price = details.get("price", 0)
+            if price <= 0:
+                # 回退：从ias_details的momentum取ma250近似
+                mom = r.get("ias_details", {}).get("details", {}).get("momentum", {})
+                price = mom.get("ma250", 0)
             if price > 0:
                 price_map[r["symbol"]] = price
         summary = sim_engine.process_recommendations(recs, price_map)

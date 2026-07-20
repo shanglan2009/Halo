@@ -87,6 +87,8 @@ class TimingResult:
                 "industry_avg_pe": round(self.industry_avg_pe, 2),
                 "pe_to_industry": round(self.pe_to_industry, 2),
                 "fcf_yield_pct": round(self.fcf_yield * 100, 2),
+                "price": round(self.price, 2),
+                "ma250": round(self.ma250, 2),
                 "ma250_position": round(self.price / self.ma250 - 1, 4) if self.ma250 > 0 else 0
             }
         }

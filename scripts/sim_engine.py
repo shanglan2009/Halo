@@ -96,7 +96,7 @@ class SimEngine:
     def __init__(self):
         self._trades: list[Trade] = []
         self._positions: dict[str, Position] = {}  # key: symbol
-        self._sold_symbols: set = set()  # 已卖出但未再次推荐的股票
+        self._sold_symbols: dict[str, str] = {}  # symbol -> sold_date
         self._load()
     
     def _load(self):
@@ -128,10 +128,10 @@ class SimEngine:
                         cost=p["cost"],
                     )
                     self._positions[p["symbol"]] = pos
-                self._sold_symbols = set(data.get("sold_symbols", []))
+                self._sold_symbols = dict(data.get("sold_symbols", []))
             except Exception:
                 self._positions = {}
-                self._sold_symbols = set()
+                self._sold_symbols = {}
         
         # 清理过期记录
         self._cleanup()
@@ -149,17 +149,22 @@ class SimEngine:
         with open(POSITIONS_FILE, "w", encoding="utf-8") as f:
             json.dump({
                 "positions": [p.to_dict() for p in self._positions.values()],
-                "sold_symbols": list(self._sold_symbols),
+                "sold_symbols": [[s, d] for s, d in self._sold_symbols.items()],
                 "updated_at": datetime.now().isoformat(),
             }, f, ensure_ascii=False, indent=2)
     
     def _cleanup(self):
-        """清理超过3个月的交易记录"""
+        """清理超过3个月的交易记录和已卖出记录"""
         cutoff = datetime.now() - timedelta(days=RECORD_RETENTION_DAYS)
         self._trades = [
             t for t in self._trades
             if datetime.fromisoformat(t.trade_date) >= cutoff
         ]
+        # 清理过期已卖出记录
+        self._sold_symbols = {
+            s: d for s, d in self._sold_symbols.items()
+            if datetime.fromisoformat(d) >= cutoff
+        }
     
     def _generate_trade_id(self) -> str:
         return f"T{datetime.now().strftime('%Y%m%d%H%M%S')}{len(self._trades):04d}"
@@ -253,13 +258,13 @@ class SimEngine:
         
         # 移除持仓，加入已卖出列表
         del self._positions[symbol]
-        self._sold_symbols.add(symbol)
+        self._sold_symbols[symbol] = trade_date
         self._save()
         return trade
     
     def re_enable_buy(self, symbol: str):
         """卖出后系统再次推荐时，允许重新买入"""
-        self._sold_symbols.discard(symbol)
+        self._sold_symbols.pop(symbol, None)
         self._save()
     
     def get_position(self, symbol: str) -> Optional[Position]:
