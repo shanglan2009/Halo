@@ -29,8 +29,8 @@ def build_seed_stock_data(info: dict) -> dict:
     s = info.get("sector", "")
     d = info.get("dividend_yield", 0)
     st = info.get("state_ownership", 0)
-    pl = "moderate" if any(k in s for k in ["半导体","芯片","新能源","AI","中药","水电","军工","银行"]) else "none"
-    pl = "strong" if any(k in s for k in ["半导体","芯片","AI","军工"]) else pl
+    pl = "moderate" if any(k in s for k in ["半导体","芯片","新能源","AI","中药","水电","军工","银行","创新药","通信","核电","高端制造"]) else "none"
+    pl = "strong" if any(k in s for k in ["半导体","芯片","AI","军工","新能源"]) else pl
     hd = d >= 3.0 or any(k in s for k in ["银行","煤炭","石油","电力","水电","通信"])
     m = {"白酒":85,"中药":80,"水电":75,"调味品":80,"银行":70}.get(next((k for k in ["白酒","中药","水电","调味品","银行"] if k in s), ""), 50)
     g = {"家电":60,"新能源":55,"半导体":40}.get(next((k for k in ["家电","新能源","半导体"] if k in s), ""), 10)

@@ -301,7 +301,7 @@ async def get_recommendations(
         recs = cached_data.get("recommendations", [])
         if sector:
             recs = [r for r in recs if sector in r.get("reason", "") or sector in r.get("name", "")]
-        recs = [r for r in recs[:limit] if r["final_score"] >= min_score]
+        recs = [r for r in recs if r["final_score"] >= min_score][:limit]
         response_data = {
             "recommendations": recs,
             "total": len(recs),
