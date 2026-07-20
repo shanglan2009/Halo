@@ -140,7 +140,8 @@ async def get_index_data(index_code: str = Query("sh000001", description="指数
     
     data = data_collector.get_index_data(index_code)
     if "error" in data:
-        return JSONResponse({"success": False, "message": data["error"], "timestamp": datetime.now().isoformat()})
+        print(f"[ERROR] 指数数据获取失败 {index_code}: {data['error']}", flush=True)
+        return JSONResponse({"success": False, "message": "指数数据获取失败，请稍后重试", "timestamp": datetime.now().isoformat()})
     
     cache_set(cache_key, data)
     return JSONResponse({"success": True, "data": data, "timestamp": datetime.now().isoformat()})
@@ -262,6 +263,7 @@ async def get_stock_analysis(
         return JSONResponse({"success": True, "data": result, "timestamp": datetime.now().isoformat()})
         
     except Exception as e:
+        print(f"[ERROR] 股票分析失败 {symbol}: {e}", flush=True)
         return JSONResponse({
             "success": False,
             "message": "分析失败，请稍后重试",
@@ -420,6 +422,7 @@ async def cron_refresh(
         })
         
     except Exception as e:
+        print(f"[ERROR] 定时刷新失败 time={time}: {e}", flush=True)
         return JSONResponse({
             "success": False,
             "message": "数据刷新失败，请稍后重试",
