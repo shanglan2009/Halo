@@ -20,6 +20,7 @@ from scripts.data_collector import data_collector
 from scripts.ias_engine import ias_engine
 from scripts.timing_eval import timing_evaluator
 from scripts.recommendation import recommendation_engine, QUALITY_STOCK_POOL
+from scripts.sim_engine import sim_engine
 
 # 项目根目录
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -207,6 +208,27 @@ def main():
         results["recommendations"] = refresh_stock_recommendations()
     except Exception as e:
         print(f"[ERR] 推荐数据刷新失败: {e}")
+    
+    # 2.5 模拟交易处理
+    try:
+        print("\n[SIM] 处理模拟交易...")
+        recs = results["recommendations"]["recommendations"] if results["recommendations"] else []
+        # 构建价格映射（使用推荐数据中的当前价近似开盘价）
+        price_map = {}
+        for r in recs:
+            timing = r.get("timing_details", {})
+            details = timing.get("details", {})
+            price = details.get("current_pe", 0)  # fallback
+            # 尝试从ias_details获取价格
+            ias = r.get("ias_details", {})
+            mom = ias.get("details", {}).get("momentum", {})
+            price = mom.get("ma250", 0) or price  # 用MA250近似
+            if price > 0:
+                price_map[r["symbol"]] = price
+        summary = sim_engine.process_recommendations(recs, price_map)
+        print(f"  [OK] 持仓: {summary['holdings']}, 累计盈亏: {summary['total_pnl']:.0f}")
+    except Exception as e:
+        print(f"[ERR] 模拟交易处理失败: {e}")
     
     # 3. 市场概览
     try:

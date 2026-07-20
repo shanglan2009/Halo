@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统胜率追踪 - Halo</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .summary-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 16px;
+            text-align: center;
+        }
+        .summary-card .label { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px; }
+        .summary-card .value { font-size: 1.5rem; font-weight: 700; }
+        .summary-card .value.green { color: var(--accent-green); }
+        .summary-card .value.red { color: var(--accent-red); }
+        .summary-card .value.yellow { color: var(--accent-yellow); }
+        
+        .chart-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .chart-container h4 { margin-bottom: 12px; font-size: 0.95rem; }
+        
+        .mini-chart {
+            width: 100%;
+            height: 80px;
+            position: relative;
+            overflow: hidden;
+        }
+        .mini-chart canvas { width: 100%; height: 100%; }
+        
+        .position-status {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .status-holding { background: rgba(96,165,250,0.2); color: var(--accent-blue); }
+        .status-profit { background: rgba(52,211,153,0.2); color: var(--accent-green); }
+        .status-target { background: rgba(251,191,36,0.2); color: var(--accent-yellow); }
+        
+        .trade-table .buy { color: var(--accent-green); }
+        .trade-table .sell { color: var(--accent-red); }
+        
+        .tab-nav { display: flex; gap: 4px; margin-bottom: 16px; }
+        .tab-btn {
+            padding: 8px 20px;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-secondary);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        .tab-btn.active { background: var(--accent-green); color: #000; border-color: var(--accent-green); }
+        .tab-btn:hover:not(.active) { background: var(--bg-card-hover); }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <h1 class="logo">
+                <span class="logo-icon">📊</span> 系统胜率追踪
+                <span class="logo-subtitle">Sim Trading</span>
+            </h1>
+            <nav class="nav">
+                <a href="index.html" class="nav-link">← 返回仪表盘</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            
+            <!-- 汇总卡片 -->
+            <div class="summary-cards" id="summary-cards">
+                <div class="summary-card"><div class="label">累计交易</div><div class="value" id="sum-trades">--</div></div>
+                <div class="summary-card"><div class="label">当前持仓</div><div class="value yellow" id="sum-holdings">--</div></div>
+                <div class="summary-card"><div class="label">胜率</div><div class="value green" id="sum-winrate">--</div></div>
+                <div class="summary-card"><div class="label">累计盈亏</div><div class="value" id="sum-pnl">--</div></div>
+            </div>
+
+            <!-- Tab 切换 -->
+            <div class="tab-nav">
+                <button class="tab-btn active" data-tab="positions">📈 当前持仓</button>
+                <button class="tab-btn" data-tab="trades">📋 交易记录</button>
+            </div>
+
+            <!-- 持仓列表 -->
+            <div id="tab-positions" class="tab-content active">
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>股票</th>
+                                <th>成本价</th>
+                                <th>当前价</th>
+                                <th>持仓天数</th>
+                                <th>累计收益率</th>
+                                <th>持仓盈亏</th>
+                                <th>收益曲线</th>
+                                <th>状态</th>
+                            </tr>
+                        </thead>
+                        <tbody id="positions-tbody">
+                            <tr><td colspan="8" class="loading-cell">加载中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 交易记录 -->
+            <div id="tab-trades" class="tab-content">
+                <div class="table-container">
+                    <table class="data-table trade-table">
+                        <thead>
+                            <tr>
+                                <th>日期</th>
+                                <th>股票</th>
+                                <th>类型</th>
+                                <th>价格</th>
+                                <th>数量</th>
+                                <th>金额</th>
+                                <th>原因</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trades-tbody">
+                            <tr><td colspan="7" class="loading-cell">加载中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>Halo 投资分析系统 | 模拟交易追踪 | 3个月记录保留</p>
+            <p class="footer-warning">⚠️ 模拟交易仅供系统评估参考，不构成投资建议</p>
+        </div>
+    </footer>
+
+    <script>
+        const API = '/api/sim';
+        
+        function $(s) { return document.querySelector(s); }
+        function $$(s) { return document.querySelectorAll(s); }
+        
+        function escapeHtml(str) {
+            if (!str) return '';
+            const d = document.createElement('div');
+            d.textContent = String(str);
+            return d.innerHTML;
+        }
+        
+        async function init() {
+            // Tab 切换
+            $$('.tab-btn').forEach(b => b.addEventListener('click', () => {
+                $$('.tab-btn').forEach(x => x.classList.remove('active'));
+                b.classList.add('active');
+                $$('.tab-content').forEach(x => x.classList.remove('active'));
+                $('#tab-' + b.dataset.tab).classList.add('active');
+            }));
+            
+            await loadSummary();
+            await loadPositions();
+            await loadTrades();
+        }
+        
+        async function loadSummary() {
+            try {
+                const r = await fetch(API + '/summary');
+                const j = await r.json();
+                if (j.success) {
+                    const d = j.data;
+                    $('#sum-trades').textContent = (d.win_count + d.loss_count) || '0';
+                    $('#sum-holdings').textContent = d.holdings || '0';
+                    $('#sum-winrate').textContent = (d.win_rate || 0) + '%';
+                    const pnl = d.total_pnl || 0;
+                    const pnlEl = $('#sum-pnl');
+                    pnlEl.textContent = (pnl >= 0 ? '+' : '') + pnl.toFixed(0);
+                    pnlEl.className = 'value ' + (pnl > 0 ? 'green' : pnl < 0 ? 'red' : 'yellow');
+                }
+            } catch(e) { console.error(e); }
+        }
+        
+        async function loadPositions() {
+            const tbody = $('#positions-tbody');
+            try {
+                const r = await fetch(API + '/positions');
+                const j = await r.json();
+                if (j.success && j.data.positions) {
+                    const positions = j.data.positions;
+                    if (positions.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">📭</div><h3>暂无持仓</h3><p>等待系统推荐并买入股票</p></div></td></tr>';
+                        return;
+                    }
+                    tbody.innerHTML = positions.map((p, i) => {
+                        const retClass = p.return_pct >= 0 ? 'score-high' : 'score-low';
+                        const pnlClass = p.pnl >= 0 ? 'score-high' : 'score-low';
+                        const days = p.buy_date ? Math.floor((Date.now() - new Date(p.buy_date)) / 86400000) : 0;
+                        const statusClass = p.reach_take_profit ? 'status-target' : 'status-holding';
+                        const statusText = p.reach_take_profit ? '🎯 待止盈' : '📌 持有中';
+                        return `<tr>
+                            <td><strong>${escapeHtml(p.name)}</strong><br><span class="name-cell">${escapeHtml(p.symbol)}</span></td>
+                            <td>${p.buy_price.toFixed(2)}</td>
+                            <td>${(p.current_price || 0).toFixed(2)}</td>
+                            <td>${days}天</td>
+                            <td class="${retClass}">${(p.return_pct >= 0 ? '+' : '') + p.return_pct.toFixed(2)}%</td>
+                            <td class="${pnlClass}">${(p.pnl >= 0 ? '+' : '') + p.pnl.toFixed(0)}</td>
+                            <td><canvas class="mini-chart" id="chart-${p.symbol}" width="120" height="40"></canvas></td>
+                            <td><span class="position-status ${statusClass}">${statusText}</span></td>
+                        </tr>`;
+                    }).join('');
+                    
+                    // 绘制迷你曲线
+                    for (const p of positions) {
+                        drawMiniChart(p.symbol, p.buy_price, p.current_price || p.buy_price);
+                    }
+                }
+            } catch(e) { tbody.innerHTML = '<tr><td colspan="8" class="loading-cell">加载失败</td></tr>'; }
+        }
+        
+        function drawMiniChart(symbol, buyPrice, curPrice) {
+            const canvas = document.getElementById('chart-' + symbol);
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.parentElement.clientWidth;
+            const h = 40;
+            canvas.width = w;
+            canvas.height = h;
+            
+            const mid = h / 2;
+            const range = Math.max(Math.abs(curPrice - buyPrice), buyPrice * 0.02);
+            const y0 = mid + ((curPrice > buyPrice ? -1 : 1) * mid * 0.5);
+            const y1 = mid - ((curPrice > buyPrice ? -1 : 1) * mid * 0.5);
+            
+            const color = curPrice >= buyPrice ? '#34d399' : '#f87171';
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(10, y0);
+            
+            // 模拟曲线
+            const steps = 8;
+            for (let i = 1; i <= steps; i++) {
+                const x = 10 + (w - 20) * i / steps;
+                const noise = (Math.random() - 0.5) * 10;
+                const y = y0 + (y1 - y0) * i / steps + noise;
+                ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            
+            // 买入线
+            ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.moveTo(10, mid);
+            ctx.lineTo(w - 10, mid);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+        
+        async function loadTrades() {
+            const tbody = $('#trades-tbody');
+            try {
+                const r = await fetch(API + '/trades?limit=100');
+                const j = await r.json();
+                if (j.success && j.data.trades) {
+                    const trades = j.data.trades;
+                    if (trades.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📭</div><h3>暂无交易记录</h3></div></td></tr>';
+                        return;
+                    }
+                    tbody.innerHTML = trades.map(t => {
+                        const typeClass = t.trade_type === 'buy' ? 'buy' : 'sell';
+                        const typeText = t.trade_type === 'buy' ? '买入' : '卖出';
+                        const pnlMatch = t.reason?.match(/盈亏:\s*([-\d.]+)/);
+                        const pnl = pnlMatch ? parseFloat(pnlMatch[1]) : 0;
+                        const amountStr = t.trade_type === 'sell' && pnl !== 0
+                            ? `${t.amount.toFixed(0)}<br><small style="color:${pnl>=0?'var(--accent-green)':'var(--accent-red)'}">${pnl>=0?'+':''}${pnl.toFixed(0)}</small>`
+                            : t.amount.toFixed(0);
+                        return `<tr>
+                            <td>${t.trade_date}</td>
+                            <td><strong>${escapeHtml(t.name)}</strong><br><span class="name-cell">${escapeHtml(t.symbol)}</span></td>
+                            <td class="${typeClass}">${typeText}</td>
+                            <td>${t.price.toFixed(2)}</td>
+                            <td>${t.lots}手</td>
+                            <td>${amountStr}</td>
+                            <td style="font-size:0.8rem;color:var(--text-secondary)">${escapeHtml(t.reason || '')}</td>
+                        </tr>`;
+                    }).join('');
+                }
+            } catch(e) { tbody.innerHTML = '<tr><td colspan="7" class="loading-cell">加载失败</td></tr>'; }
+        }
+        
+        init();
+    </script>
+</body>
+</html>

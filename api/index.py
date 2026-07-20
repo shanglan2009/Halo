@@ -28,6 +28,7 @@ from scripts.ias_engine import ias_engine
 from scripts.timing_eval import timing_evaluator
 from scripts.data_collector import data_collector
 from scripts.recommendation import recommendation_engine, QUALITY_STOCK_POOL
+from scripts.sim_engine import sim_engine
 
 # 创建FastAPI应用
 app = FastAPI(
@@ -626,6 +627,89 @@ async def get_quality_pool():
         },
         "timestamp": datetime.now().isoformat()
     })
+
+
+# ========== 模拟交易 API ==========
+
+@app.get("/api/sim/positions")
+async def get_sim_positions():
+    """获取模拟持仓列表"""
+    try:
+        positions = sim_engine.get_all_positions()
+        return JSONResponse({
+            "success": True,
+            "data": {
+                "positions": [p.to_dict() for p in positions],
+                "total": len(positions),
+            },
+            "timestamp": datetime.now().isoformat(),
+        })
+    except Exception as e:
+        return JSONResponse({"success": False, "message": "获取持仓失败"}, status_code=500)
+
+
+@app.get("/api/sim/trades")
+async def get_sim_trades(limit: int = Query(50, description="返回记录数")):
+    """获取模拟交易记录"""
+    try:
+        trades = sim_engine.get_trades(limit)
+        return JSONResponse({
+            "success": True,
+            "data": {
+                "trades": [t.to_dict() for t in trades],
+                "total": len(trades),
+            },
+            "timestamp": datetime.now().isoformat(),
+        })
+    except Exception as e:
+        return JSONResponse({"success": False, "message": "获取记录失败"}, status_code=500)
+
+
+@app.get("/api/sim/summary")
+async def get_sim_summary():
+    """获取模拟交易汇总统计"""
+    try:
+        summary = sim_engine.get_summary()
+        return JSONResponse({
+            "success": True,
+            "data": summary,
+            "timestamp": datetime.now().isoformat(),
+        })
+    except Exception as e:
+        return JSONResponse({"success": False, "message": "获取统计失败"}, status_code=500)
+
+
+@app.get("/api/sim/chart/{symbol}")
+async def get_sim_chart(symbol: str):
+    """获取单只股票的收益曲线数据"""
+    try:
+        trades = sim_engine.get_trades_by_symbol(symbol)
+        # 构建收益曲线：从买入日起按时间排列
+        chart_data = []
+        cost_basis = None
+        for t in sorted(trades, key=lambda x: x.trade_date):
+            if t.trade_type == "buy" and cost_basis is None:
+                cost_basis = t.price
+            point = {
+                "date": t.trade_date,
+                "type": t.trade_type,
+                "price": t.price,
+                "return_pct": round((t.price - cost_basis) / cost_basis * 100, 2) if cost_basis and cost_basis > 0 else 0,
+            }
+            chart_data.append(point)
+            if t.trade_type == "sell":
+                cost_basis = None  # 重置，等待下次买入
+        
+        return JSONResponse({
+            "success": True,
+            "data": {
+                "symbol": symbol,
+                "chart": chart_data,
+            },
+            "timestamp": datetime.now().isoformat(),
+        })
+    except Exception as e:
+        return JSONResponse({"success": False, "message": "获取曲线失败"}, status_code=500)
 
 
 # ========== Vercel Serverless 入口 ==========
