@@ -285,23 +285,19 @@ async def get_recommendations(
         symbol = stock_info["symbol"]
         name = stock_info["name"]
         
+        # 尝试实时数据，失败则回退到离线评分
         try:
-            # 优先尝试实时数据
             stock_data = data_collector.collect_stock_data(symbol, name)
-            if stock_data.get("meta", {}).get("_note"):
-                raise ValueError("实时数据不可用")
         except Exception:
-            # 回退到离线评分
             stock_data = build_offline_stock_data(stock_info)
         
+        # 添加元数据
+        stock_data["meta"]["sector"] = stock_info.get("sector", "")
+        stock_data["meta"]["dividend_yield"] = stock_info.get("dividend_yield", 0)
+        stock_data["meta"]["state_ownership"] = stock_info.get("state_ownership", 0)
+        stock_data["meta"]["reason"] = stock_info.get("reason", "")
+        
         try:
-            # 添加元数据
-            stock_data["meta"]["sector"] = stock_info.get("sector", "")
-            stock_data["meta"]["dividend_yield"] = stock_info.get("dividend_yield", 0)
-            stock_data["meta"]["state_ownership"] = stock_info.get("state_ownership", 0)
-            stock_data["meta"]["reason"] = stock_info.get("reason", "")
-            
-            # 生成推荐
             rec = recommendation_engine.recommend(stock_data)
             rec_dict = rec.to_dict()
             rec_dict["reason"] = stock_info.get("reason", "")
@@ -359,37 +355,30 @@ async def get_stock_analysis(
     if not name:
         name = symbol
     
-    stock_data = None
-    try:
-        stock_data = data_collector.collect_stock_data(symbol, name)
-        if stock_data.get("meta", {}).get("_note"):
-            stock_data = None  # 标记为mock数据
-    except Exception:
-        stock_data = None
-    
-    # 回退到离线评分
-    if stock_data is None:
-        pool_info = None
-        for s in QUALITY_STOCK_POOL:
-            if s["symbol"] == symbol:
-                pool_info = s
-                break
-        if pool_info:
-            stock_data = build_offline_stock_data(pool_info)
-        else:
-            stock_data = build_offline_stock_data({
-                "symbol": symbol, "name": name,
-                "sector": "", "dividend_yield": 0, "state_ownership": 0, "reason": ""
-            })
-    
     # 查找股票池中的元数据
+    pool_info = None
     for s in QUALITY_STOCK_POOL:
         if s["symbol"] == symbol:
-            stock_data["meta"]["sector"] = s.get("sector", "")
-            stock_data["meta"]["dividend_yield"] = s.get("dividend_yield", 0)
-            stock_data["meta"]["state_ownership"] = s.get("state_ownership", 0)
-            stock_data["meta"]["reason"] = s.get("reason", "")
+            pool_info = s
+            if not name or name == symbol:
+                name = s["name"]
             break
+    
+    # 尝试实时数据，失败则回退到离线评分
+    try:
+        stock_data = data_collector.collect_stock_data(symbol, name)
+    except Exception:
+        stock_data = build_offline_stock_data(pool_info if pool_info else {
+            "symbol": symbol, "name": name,
+            "sector": "", "dividend_yield": 0, "state_ownership": 0, "reason": ""
+        })
+    
+    # 补充元数据
+    if pool_info:
+        stock_data["meta"]["sector"] = pool_info.get("sector", "")
+        stock_data["meta"]["dividend_yield"] = pool_info.get("dividend_yield", 0)
+        stock_data["meta"]["state_ownership"] = pool_info.get("state_ownership", 0)
+        stock_data["meta"]["reason"] = pool_info.get("reason", "")
     
     try:
         rec = recommendation_engine.recommend(stock_data)
@@ -430,14 +419,11 @@ async def batch_analysis(request: StockRecommendRequest):
                 meta = s
                 break
         
+        # 尝试实时数据，失败则回退到离线评分
         try:
             stock_data = data_collector.collect_stock_data(symbol, name)
-            if stock_data.get("meta", {}).get("_note"):
-                stock_data = build_offline_stock_data(meta if meta else {
-                    "symbol": symbol, "name": name,
-                    "sector": "", "dividend_yield": 0, "state_ownership": 0, "reason": ""
-                })
         except Exception:
+            print(f"[INFO] 批量分析 {symbol} 回退到离线数据", flush=True)
             stock_data = build_offline_stock_data(meta if meta else {
                 "symbol": symbol, "name": name,
                 "sector": "", "dividend_yield": 0, "state_ownership": 0, "reason": ""
