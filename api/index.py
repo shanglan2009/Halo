@@ -18,7 +18,7 @@ from typing import Optional
 # 确保项目根目录在Python路径中
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Query, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
 from pydantic import BaseModel
@@ -39,7 +39,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -49,13 +49,22 @@ CRON_SECRET = os.environ.get("CRON_SECRET", "")
 # 若未配置CRON_SECRET，允许本地开发环境无鉴权访问
 DEV_MODE = os.environ.get("VERCEL_ENV", "development") == "development" and not os.environ.get("VERCEL")
 
-def verify_cron_secret(request_secret: str = "") -> bool:
-    """验证定时任务密钥"""
+def verify_cron_secret(request) -> bool:
+    """验证定时任务密钥
+    Vercel Cron Jobs 通过 Authorization header 发送 CRON_SECRET
+    本地开发环境自动放行
+    """
     if DEV_MODE and not CRON_SECRET:
         return True  # 本地开发允许
     if not CRON_SECRET:
         return False  # 生产环境未配置则拒绝
-    return request_secret == CRON_SECRET
+    # 检查 Authorization header (Vercel Cron Jobs 标准方式)
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header == f"Bearer {CRON_SECRET}":
+        return True
+    # 也支持 query param 方式 (手动调用/调试)
+    query_secret = request.query_params.get("secret", "")
+    return query_secret == CRON_SECRET
 
 
 # ========== 数据缓存 ==========
@@ -367,8 +376,8 @@ async def market_overview():
 
 @app.get("/api/cron/refresh")
 async def cron_refresh(
+    request: Request,
     time: str = Query("0925", description="刷新时间标识"),
-    secret: str = Query("", description="CRON_SECRET密钥"),
 ):
     """
     定时刷新端点（由Vercel Cron Jobs触发）
@@ -379,8 +388,9 @@ async def cron_refresh(
     - 14:50 (UTC 6:50) - 收盘前
     
     需要 CRON_SECRET 环境变量鉴权（本地开发环境自动放行）
+    Vercel Cron Jobs 自动通过 Authorization header 发送密钥
     """
-    if not verify_cron_secret(secret):
+    if not verify_cron_secret(request):
         return JSONResponse({
             "success": False,
             "message": "未授权：需要有效的 CRON_SECRET",

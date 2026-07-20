@@ -374,7 +374,7 @@ async function showStockDetail(symbol) {
         if (json.success) {
             renderStockDetail(json.data);
         } else {
-            body.innerHTML = `<div class="empty-state"><p>${json.message || '加载失败'}</p></div>`;
+            body.innerHTML = `<div class="empty-state"><p>${escapeHtml(json.message || '加载失败')}</p></div>`;
         }
     } catch (err) {
         body.innerHTML = '<div class="loading">加载失败</div>';
