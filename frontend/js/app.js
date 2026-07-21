@@ -296,7 +296,7 @@ async function loadRecommendations() {
     
     const tbody = $('#recommendations-tbody');
     if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="8" class="loading-cell">加载中...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12" class="loading-cell">加载中...</td></tr>';
     
     const sector = $('#sector-filter')?.value || '';
     
