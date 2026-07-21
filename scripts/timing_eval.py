@@ -100,108 +100,65 @@ class TimingEvaluator:
     @staticmethod
     def evaluate_historical_pe(current_pe: float, pe_percentile: float) -> float:
         """
-        历史估值分位评分 (0-20分)
+        历史估值分位评分 (0-20分) — 线性评分
         
-        比较当前PE(TTM)与过去10年历史PE区间。
-        
-        评分规则：
-        - 0%-20%分位: 20分
-        - 20%-40%分位: 15分
-        - 40%-60%分位: 8分
-        - 60%以上: 0分
+        分位越低越好（越便宜），线性映射：
+        pe_percentile=0   → 20分（极度低估）
+        pe_percentile=50  → 10分（合理）
+        pe_percentile=100 → 0分（极度高估）
         """
         if current_pe <= 0:
             return 0.0
-        
-        if pe_percentile <= 20:
-            return 20.0
-        elif pe_percentile <= 40:
-            return 15.0
-        elif pe_percentile <= 60:
-            return 8.0
-        else:
-            return 0.0
+        return max(0.0, min(20.0, 20.0 * (1.0 - pe_percentile / 100.0)))
     
     @staticmethod
     def evaluate_industry_pe(current_pe: float, industry_avg_pe: float) -> float:
         """
-        行业估值比较评分 (0-10分)
+        行业估值比较评分 (0-10分) — 线性评分
         
-        计算：当前PE ÷ 行业平均PE
-        
-        评分规则：
-        - ≤0.8: 10分
-        - 0.8-1.0: 8分
-        - 1.0-1.2: 5分
-        - >1.2: 0分
+        当前PE相对行业平均PE越便宜越好：
+        ratio=0.5 → 10分（半价）
+        ratio=1.0 → 5分（平价）
+        ratio=2.0 → 0分（2倍溢价）
         """
         if current_pe <= 0 or industry_avg_pe <= 0:
             return 0.0
-        
         ratio = current_pe / industry_avg_pe
-        
-        if ratio <= 0.8:
-            return 10.0
-        elif ratio <= 1.0:
-            return 8.0
-        elif ratio <= 1.2:
-            return 5.0
-        else:
-            return 0.0
+        return max(0.0, min(10.0, 10.0 * (1.0 - (ratio - 0.5) / 1.5)))
     
     @staticmethod
     def evaluate_ma_position(price: float, ma60: float, ma120: float, ma250: float) -> float:
         """
-        均线位置评分 (0-10分)
+        均线位置评分 (0-10分) — 线性评分
         
-        重点关注MA250（年线）。
+        低于年线越多越好（超跌机会）：
+        低于MA250 20% → 10分
+        等于MA250       → 7分
+        高于MA250 50%   → 0分
         
-        评分规则：
-        - 低于MA250超过10%: 10分
-        - MA250±10%: 8分
-        - 高于MA250 10%-30%: 5分
-        - 高于MA250超过30%: 0分
+        重点关注MA250（年线）
         """
         if price <= 0 or ma250 <= 0:
             return 0.0
-        
-        deviation = (price - ma250) / ma250  # 偏离MA250的比例
-        
-        if deviation < -0.10:
-            return 10.0
-        elif deviation <= 0.10:
-            return 8.0
-        elif deviation <= 0.30:
-            return 5.0
-        else:
-            return 0.0
+        deviation = (price - ma250) / ma250
+        # 线性：deviation=-0.2→10, deviation=0→7, deviation=0.5→0
+        return max(0.0, min(10.0, 7.0 - deviation * 14.0))
     
     @staticmethod
     def evaluate_fcf_yield(fcf: float, market_cap: float) -> float:
         """
-        自由现金流收益率评分 (0-10分)
+        自由现金流收益率评分 (0-10分) — 线性评分
         
-        计算：自由现金流 ÷ 总市值
-        
-        评分规则：
-        - ≥10%: 10分
-        - 8%-10%: 8分
-        - 5%-8%: 5分
-        - <5%: 0分
+        收益率越高越好：
+        fcf_yield=0%    → 0分
+        fcf_yield=5%    → 5分
+        fcf_yield=10%   → 10分
+        fcf_yield≥15%   → 10分（封顶）
         """
         if fcf <= 0 or market_cap <= 0:
             return 0.0
-        
         fcf_yield = fcf / market_cap
-        
-        if fcf_yield >= 0.10:
-            return 10.0
-        elif fcf_yield >= 0.08:
-            return 8.0
-        elif fcf_yield >= 0.05:
-            return 5.0
-        else:
-            return 0.0
+        return max(0.0, min(10.0, fcf_yield * 100.0))
     
     def evaluate(self, symbol: str, name: str, data: dict) -> TimingResult:
         """

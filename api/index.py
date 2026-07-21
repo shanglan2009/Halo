@@ -230,6 +230,35 @@ def build_offline_stock_data(stock_info: dict) -> dict:
             global_base = score
             break
     
+    # === 差异化买入时机参数（基于行业特征） ===
+    # PE百分位：银行/能源最便宜，半导体/新能源最贵
+    value_sectors = ["银行", "煤炭", "石油", "水电", "高速公路", "通信"]
+    growth_sectors = ["半导体", "芯片", "新能源", "AI", "人工智能", "创新药", "军工"]
+    
+    if any(k in sector for k in value_sectors):
+        pe_pct = 15 + (div_yield * 3)  # 高分红→低分位(便宜): 15-35
+        pe_val = 6 + div_yield * 1.5   # PE值: 6-14
+        price_ma_ratio = 0.95          # 略低于年线
+        fcf_ratio = 0.06 + div_yield * 0.01  # FCF收益率与分红正相关
+    elif any(k in sector for k in growth_sectors):
+        pe_pct = 55 + state_pct * 0.3  # 成长股分位高(贵): 55-80
+        pe_val = 25 + state_pct * 0.2  # PE值: 25-45
+        price_ma_ratio = 1.15          # 高于年线
+        fcf_ratio = max(0.01, 0.03 - state_pct * 0.002)
+    else:
+        pe_pct = 30 + (50 - div_yield * 5)  # 消费/医药: 20-50
+        pe_val = 12 + (30 - div_yield * 4)  # PE值: 10-25
+        price_ma_ratio = 1.0           # 约等于年线
+        fcf_ratio = 0.04 + div_yield * 0.005
+    
+    pe_pct = max(5, min(90, pe_pct))
+    pe_val = max(4, min(50, pe_val))
+    ind_pe = pe_val * 1.3  # 行业PE略高于个股PE
+    ma250 = 100.0
+    price = ma250 * price_ma_ratio
+    mcap = 5000 + div_yield * 1000  # 市值与分红正相关
+    fcf = mcap * fcf_ratio
+    
     return {
         "industry": {
             "order_growth": 60, "capacity_utilization": 65,
@@ -274,10 +303,10 @@ def build_offline_stock_data(stock_info: dict) -> dict:
             "reduction": 0, "financial_risk": 0, "regulatory_investigation": 0,
         },
         "timing": {
-            "current_pe": 15, "pe_percentile": 30,
-            "industry_avg_pe": 20,
-            "price": 100, "ma60": 95, "ma120": 90, "ma250": 85,
-            "fcf": 500, "market_cap": 8000,
+            "current_pe": pe_val, "pe_percentile": pe_pct,
+            "industry_avg_pe": ind_pe,
+            "price": price, "ma60": ma250 * 0.98, "ma120": ma250 * 0.96, "ma250": ma250,
+            "fcf": fcf, "market_cap": mcap,
         },
         "meta": {
             "symbol": stock_info["symbol"],

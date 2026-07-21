@@ -34,13 +34,26 @@ def build_seed_stock_data(info: dict) -> dict:
     hd = d >= 3.0 or any(k in s for k in ["银行","煤炭","石油","电力","水电","通信"])
     m = {"白酒":85,"中药":80,"水电":75,"调味品":80,"银行":70}.get(next((k for k in ["白酒","中药","水电","调味品","银行"] if k in s), ""), 50)
     g = {"家电":60,"新能源":55,"半导体":40}.get(next((k for k in ["家电","新能源","半导体"] if k in s), ""), 10)
+    # === 差异化买入时机 ===
+    vs = ["银行","煤炭","石油","水电","通信"]
+    gs = ["半导体","芯片","新能源","AI","创新药","军工"]
+    if any(k in s for k in vs):
+        pp, pv, pr, fr = 15+d*3, 6+d*1.5, 0.95, 0.06+d*0.01
+    elif any(k in s for k in gs):
+        pp, pv, pr, fr = 55+st*0.3, 25+st*0.2, 1.15, max(0.01,0.03-st*0.002)
+    else:
+        pp, pv, pr, fr = 30+(50-d*5), 12+(30-d*4), 1.0, 0.04+d*0.005
+    pp, pv = max(5,min(90,pp)), max(4,min(50,pv))
+    ip = pv * 1.3
+    p, m = 100*pr, 5000+d*1000
+    f = m * fr
     return {
         "industry": {"order_growth":60,"capacity_utilization":65,"price_trend":55,"policy_level":pl,"revenue_growth":12,"profit_growth":10,"roe_trend":8,"etf_flow":40,"sector_flow":45,"rank_pct":50,"pe_percentile":40,"pb_percentile":35},
         "company": {"pe_percentile":30,"pb_percentile":35,"ps_ratio":3,"peg_ratio":1,"ev_ebitda":10,"roe_5y":18 if hd else 22,"roic":12 if hd else 16,"gross_margin":55 if hd else 65,"net_margin":20 if hd else 30,"op_cashflow":12 if hd else 15,"market_share":55,"cost_advantage":50,"brand_power":m,"channel":55,"patents":40,"barrier":m,"overseas_revenue_pct":g//2,"overseas_orders":g//3,"global_clients":g//2,"overseas_capacity":g//4},
         "capital": {"day20_inflow":0.05,"ema_trend":0.03,"shareholder_change":-0.02,"avg_holding_increase":0.01,"lhb_net_buy":0.1,"lhb_retail_excluded":st>5,"block_premium_pct":1,"block_institution_buy":st>10,"fund_increase_ratio":0.02,"fund_count_change":0.05},
         "momentum": {"ret_20d":0.02,"ret_60d":0.04,"ret_120d":0.06,"sector_rank_pct":55,"ma20":100,"ma60":95,"ma120":90,"ma250":85,"price":100,"vol_up_ratio":0.45,"vol_down_ratio":0.35,"atr_pct":2.5,"beta":0.9,"annual_vol":28},
         "event": {"major_order":0,"policy_support":2 if pl in ("strong","moderate") else 0,"buyback":0,"executive_buy":0,"reduction":0,"financial_risk":0,"regulatory_investigation":0},
-        "timing": {"current_pe":15,"pe_percentile":30,"industry_avg_pe":20,"price":100,"ma60":95,"ma120":90,"ma250":85,"fcf":500,"market_cap":8000},
+        "timing": {"current_pe":pv,"pe_percentile":pp,"industry_avg_pe":ip,"price":p,"ma60":p*0.98,"ma120":p*0.96,"ma250":p,"fcf":f,"market_cap":m},
         "meta": {"symbol":info["symbol"],"name":info["name"],"sector":s,"dividend_yield":d,"state_ownership":st,"reason":info.get("reason",""),"data_source":"seed"},
     }
 
