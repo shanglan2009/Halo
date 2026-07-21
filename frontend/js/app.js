@@ -422,7 +422,6 @@ function renderRecommendationsTable(recs) {
 async function loadStockPool() {
     const tbody = $('#pool-tbody');
     if (!tbody) return;
-    if (!tbody) return;
     tbody.innerHTML = '<tr><td colspan="6" class="loading-cell">加载中...</td></tr>';
     
     try {
