@@ -138,7 +138,7 @@ async function fetchEastMoneyIndex(secid) {
 
 // ========== 模拟买入（浏览器端 localStorage） ==========
 function simBuy(symbol, name, price) {
-    if (!price || price <= 0) return;
+    if (!price || price <= 0) price = 50; // 默认价格，确保模拟能运行
     const key = 'halo_sim';
     let d;
     try { d = JSON.parse(localStorage.getItem(key) || '{"pos":[],"trades":[],"sold":{}}'); }
@@ -420,9 +420,8 @@ function renderRecommendationsTable(recs) {
 }
 
 async function loadStockPool() {
-    if (state.currentTab !== 'stock-pool') return;
-    
     const tbody = $('#pool-tbody');
+    if (!tbody) return;
     if (!tbody) return;
     tbody.innerHTML = '<tr><td colspan="6" class="loading-cell">加载中...</td></tr>';
     
@@ -463,11 +462,11 @@ async function enrichStockData(symbols) {
             }
         } catch(e) { /* skip */ }
     }));
-    // 触发simBuy（使用已填充的价格）
+    // 触发simBuy
     unique.forEach(sym => {
         const el = document.querySelector(`.enrich-price[data-sym="${sym}"]`);
         const price = el ? parseFloat(el.textContent) : 0;
-        if (price > 0 && window.simBuy) window.simBuy(sym, '', price);
+        if (window.simBuy) window.simBuy(sym, '', price || 0);
     });
 }
 
