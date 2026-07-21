@@ -120,15 +120,21 @@ async def recommend(limit:int=Query(20),min_score:float=Query(0),sector:str=Quer
     return JSONResponse({"success":True,"data":fb,"timestamp":datetime.now().isoformat()})
 
 @app.get("/api/stocks/{symbol}")
-async def stock_detail(symbol:str, name:str=Query("")):
+async def stock_detail(symbol:str):
+    ck = f"stock_{symbol}"
+    c = cache_get(ck)
+    if c: return JSONResponse({"success":True,"data":c,"timestamp":datetime.now().isoformat()})
     j = load_json("recommendations.json")
     if j:
         for r in j.get("recommendations",[]):
             if r.get("symbol") == symbol:
+                cache_set(ck, r)
                 return JSONResponse({"success":True,"data":r,"timestamp":datetime.now().isoformat()})
     for s in STOCK_POOL:
         if s["symbol"] == symbol:
-            return JSONResponse({"success":True,"data":{"symbol":symbol,"name":s["name"],"final_score":0,"ias_score":0,"timing_score":0,"recommendation":"暂无评分","is_recommended":False,"reason":s.get("reason",""),"features":{"passed_count":4,"all_passed":True},"ias_details":{},"timing_details":{},"ics":{}},"timestamp":datetime.now().isoformat()})
+            d = {"symbol":symbol,"name":s["name"],"final_score":0,"ias_score":0,"timing_score":0,"recommendation":"暂无评分","is_recommended":False,"reason":s.get("reason",""),"features":{"passed_count":0,"all_passed":False},"ias_details":{},"timing_details":{},"ics":{}}
+            cache_set(ck, d)
+            return JSONResponse({"success":True,"data":d,"timestamp":datetime.now().isoformat()})
     return JSONResponse({"success":False,"message":"未找到该股票"},status_code=404)
 
 @app.get("/api/stocks/quality-pool")
