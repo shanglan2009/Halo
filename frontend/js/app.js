@@ -457,7 +457,10 @@ function renderStockDetail(data) {
         ${renderScoreBar('历史分位 (40%)', timing.details?.score_historical || 0, 40)}
         ${renderScoreBar('行业偏离 (30%)', timing.details?.score_industry_pe || 0, 30)}
         ${renderScoreBar('行业景气 (30%)', timing.details?.score_prosperity || 0, 30)}
+        ${renderScoreBar('PB分位 (10%)', timing.details?.score_pb || 0, 10)}
+        ${renderScoreBar('股息率 (10%)', timing.details?.score_dividend || 0, 10)}
         <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:16px;">
+            总分: ${(timing.total_score || 0).toFixed(1)} / 120 | 
             评级: ${timingRating} | 
             买入区域: ${timing.is_buy_zone ? '✅ 是' : '❌ 否'}
         </p>

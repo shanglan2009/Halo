@@ -313,6 +313,8 @@ def build_offline_stock_data(stock_info: dict) -> dict:
             "current_pe": pe_val,
             "industry_avg_pe": ind_pe,
             "industry_growth": ind_growth,
+            "pb_percentile": 0.20 + div_yield * 0.02,  # 高分红→低PB分位(破净)
+            "dividend_yield": div_yield / 100.0,  # 转为小数(如3.5→0.035)
         },
         "meta": {
             "symbol": stock_info["symbol"],

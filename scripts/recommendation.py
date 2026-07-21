@@ -140,7 +140,7 @@ class StockRecommendation:
         return (self.ias_result and self.ias_result.passed and 
                 self.timing_result and self.timing_result.is_buy_zone and
                 self.features.all_passed and
-                self.final_score >= 60)
+                self.final_score >= 50)
     
     def to_dict(self) -> dict:
         return {
@@ -340,13 +340,13 @@ class RecommendationEngine:
         rec.final_score = rec.final_score_weighted
         
         # 6. 推荐等级
-        if rec.final_score >= 85:
+        if rec.final_score >= 75:
             rec.recommendation = "⭐⭐⭐⭐⭐ 强烈推荐"
-        elif rec.final_score >= 75:
-            rec.recommendation = "⭐⭐⭐⭐ 推荐"
         elif rec.final_score >= 65:
-            rec.recommendation = "⭐⭐⭐ 关注"
+            rec.recommendation = "⭐⭐⭐⭐ 推荐"
         elif rec.final_score >= 55:
+            rec.recommendation = "⭐⭐⭐ 关注"
+        elif rec.final_score >= 45:
             rec.recommendation = "⭐⭐ 观望"
         else:
             rec.recommendation = "⭐ 不推荐"

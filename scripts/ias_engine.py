@@ -153,8 +153,8 @@ class IASResult:
     
     @property
     def passed(self) -> bool:
-        """双重过滤规则：Industry >= 60 且 Company >= 60"""
-        return self.industry_pct >= 60.0 and self.company_pct >= 60.0
+        """双重过滤规则：Industry >= 50 且 Company >= 50"""
+        return self.industry_pct >= 50.0 and self.company_pct >= 50.0
     
     def to_dict(self) -> dict:
         return {

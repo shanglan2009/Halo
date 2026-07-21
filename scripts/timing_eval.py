@@ -20,49 +20,54 @@ class TimingResult:
     symbol: str
     name: str
     
-    # 三维评分 (0-100)
-    score_historical: float = 0.0   # 历史分位得分 (0-40)
+    # 五维评分 (总分120)
+    score_historical: float = 0.0   # 历史PE分位得分 (0-40)
     score_industry_pe: float = 0.0  # 行业PE偏离得分 (0-30)
     score_prosperity: float = 0.0   # 行业景气度得分 (0-30)
+    score_pb: float = 0.0           # PB分位得分 (0-10)
+    score_dividend: float = 0.0     # 股息率得分 (0-10)
     
     # 原始数据
     current_pe: float = 0.0
-    pe_percentile: float = 50.0
+    pe_percentile: float = 0.5
     industry_avg_pe: float = 0.0
-    pe_deviation: float = 0.0       # PE偏离度 = (PE/行业PE) - 1
-    industry_growth: float = 0.0    # 行业预期净利润增速
+    pe_deviation: float = 0.0
+    industry_growth: float = 0.0
+    pb_percentile: float = 0.5      # PB历史分位 (0-1)
+    dividend_yield: float = 0.0     # 股息率 (如0.05=5%)
     
     @property
     def total_score(self) -> float:
-        """买入时机总分 (0-100)"""
-        return self.score_historical + self.score_industry_pe + self.score_prosperity
+        """买入时机总分 (0-120)"""
+        return (self.score_historical + self.score_industry_pe + 
+                self.score_prosperity + self.score_pb + self.score_dividend)
     
     @property
     def normalized_score(self) -> float:
-        """归一化到0-100（已为0-100）"""
-        return self.total_score
+        """归一化到0-100"""
+        return self.total_score / 120.0 * 100.0
     
     @property
     def rating(self) -> str:
-        """买入时机评级"""
-        s = self.total_score
-        if s >= 80:
+        """买入时机评级（阈值下调10分）"""
+        s = self.normalized_score
+        if s >= 70:
             return "★★★★★ 极度低估"
-        elif s >= 65:
+        elif s >= 55:
             return "★★★★ 显著低估"
-        elif s >= 50:
+        elif s >= 42:
             return "★★★ 合理偏低"
-        elif s >= 35:
+        elif s >= 28:
             return "★★ 合理偏高"
-        elif s >= 20:
+        elif s >= 15:
             return "★ 偏贵"
         else:
             return "☆ 太贵"
     
     @property
     def is_buy_zone(self) -> bool:
-        """是否处于买入区域 (>=50分)"""
-        return self.total_score >= 50
+        """是否处于买入区域 (总分>=72, 即归一化>=60)"""
+        return self.normalized_score >= 60
     
     def to_dict(self) -> dict:
         return {
@@ -76,11 +81,15 @@ class TimingResult:
                 "score_historical": round(self.score_historical, 2),
                 "score_industry_pe": round(self.score_industry_pe, 2),
                 "score_prosperity": round(self.score_prosperity, 2),
+                "score_pb": round(self.score_pb, 2),
+                "score_dividend": round(self.score_dividend, 2),
                 "current_pe": round(self.current_pe, 2),
                 "pe_percentile": round(self.pe_percentile, 2),
                 "industry_avg_pe": round(self.industry_avg_pe, 2),
                 "pe_deviation": round(self.pe_deviation, 4),
                 "industry_growth": round(self.industry_growth, 4),
+                "pb_percentile": round(self.pb_percentile, 2),
+                "dividend_yield": round(self.dividend_yield, 4),
             }
         }
 
@@ -145,26 +154,50 @@ class TimingEvaluator:
         
         return max(5.0, min(30.0, (industry_growth + 0.10) / 0.40 * 30.0))
     
+    @staticmethod
+    def score_pb(pb_percentile: float) -> float:
+        """
+        维度四：PB分位得分 (权重10分)
+        
+        PB越低越好：pb_percentile=0 → 10分, pb_percentile=1 → 0分
+        """
+        return max(0.0, min(10.0, (1.0 - pb_percentile) * 10.0))
+    
+    @staticmethod
+    def score_dividend(dividend_yield: float) -> float:
+        """
+        维度五：股息率得分 (权重10分)
+        
+        股息率越高越好：0% → 0分, 5% → 10分, ≥8% → 10分封顶
+        """
+        return max(0.0, min(10.0, dividend_yield * 200.0))
+    
     def evaluate(self, symbol: str, name: str, data: dict) -> TimingResult:
         """
-        完整买入时机评估
+        完整买入时机评估（五维模型）
         
         data参数：
         - pe_percentile: PE历史分位 (0-1)
         - current_pe: 当前PE(TTM)
         - industry_avg_pe: 行业平均PE
         - industry_growth: 行业预期净利润增速 (如0.15=15%)
+        - pb_percentile: PB历史分位 (0-1)
+        - dividend_yield: 股息率 (如0.05=5%)
         """
         pe_percentile = data.get("pe_percentile", 0.5)
         current_pe = data.get("current_pe", 0)
         industry_avg_pe = data.get("industry_avg_pe", 0)
         industry_growth = data.get("industry_growth", 0.05)
+        pb_percentile = data.get("pb_percentile", 0.5)
+        dividend_yield = data.get("dividend_yield", 0)
         
         result = TimingResult(symbol=symbol, name=name)
         result.current_pe = current_pe
         result.pe_percentile = pe_percentile
         result.industry_avg_pe = industry_avg_pe
         result.industry_growth = industry_growth
+        result.pb_percentile = pb_percentile
+        result.dividend_yield = dividend_yield
         
         if industry_avg_pe > 0:
             result.pe_deviation = (current_pe / industry_avg_pe) - 1.0
@@ -172,6 +205,8 @@ class TimingEvaluator:
         result.score_historical = self.score_historical(pe_percentile)
         result.score_industry_pe = self.score_industry_pe(current_pe, industry_avg_pe)
         result.score_prosperity = self.score_prosperity(industry_growth)
+        result.score_pb = self.score_pb(pb_percentile)
+        result.score_dividend = self.score_dividend(dividend_yield)
         
         return result
 

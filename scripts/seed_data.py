@@ -66,7 +66,7 @@ def build_seed_stock_data(info: dict) -> dict:
         "capital": {"day20_inflow":0.05,"ema_trend":0.03,"shareholder_change":-0.02,"avg_holding_increase":0.01,"lhb_net_buy":0.1,"lhb_retail_excluded":st>5,"block_premium_pct":1,"block_institution_buy":st>10,"fund_increase_ratio":0.02,"fund_count_change":0.05},
         "momentum": {"ret_20d":0.02,"ret_60d":0.04,"ret_120d":0.06,"sector_rank_pct":55,"ma20":100,"ma60":95,"ma120":90,"ma250":85,"price":100,"vol_up_ratio":0.45,"vol_down_ratio":0.35,"atr_pct":2.5,"beta":0.9,"annual_vol":28},
         "event": {"major_order":0,"policy_support":2 if pl in ("strong","moderate") else 0,"buyback":0,"executive_buy":0,"reduction":0,"financial_risk":0,"regulatory_investigation":0},
-        "timing": {"pe_percentile":pp,"current_pe":pv,"industry_avg_pe":ip,"industry_growth":ig},
+        "timing": {"pe_percentile":pp,"current_pe":pv,"industry_avg_pe":ip,"industry_growth":ig,"pb_percentile":0.20+d*0.02,"dividend_yield":d/100.0},
         "meta": {"symbol":info["symbol"],"name":info["name"],"sector":s,"dividend_yield":d,"state_ownership":st,"reason":info.get("reason",""),"data_source":"seed"},
     }
 

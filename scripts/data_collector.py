@@ -596,7 +596,9 @@ class DataCollector:
                 "pe_percentile": valuation.get("pe_percentile", 50) / 100.0,  # 转为0-1
                 "current_pe": valuation.get("current_pe", 0),
                 "industry_avg_pe": 0,
-                "industry_growth": 0.05,  # 默认GDP增速，真实数据需外部补充
+                "industry_growth": 0.05,
+                "pb_percentile": valuation.get("pb_percentile", 50) / 100.0,
+                "dividend_yield": 0.02,  # 默认2%，真实数据需外部补充
             },
             # 元数据
             "meta": {
