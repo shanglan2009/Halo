@@ -124,7 +124,36 @@ function initControls() {
 // ========== 数据加载 ==========
 async function loadAllData(forceRefresh = false) {
     updateStatus(false, '加载中...');
-    
+
+
+// ========== 东方财富指数（仪表盘专用） ==========
+async function fetchEastMoneyIndex(secid) {
+    try {
+        const r = await fetch(`https://push2.eastmoney.com/api/qt/stock/get?secid=${secid}&fields=f43,f58,f170`);
+        const j = await r.json();
+        if (j?.data) return { price: (j.data.f43||0)/100, name: j.data.f58||'', change_pct: (j.data.f170||0)/100 };
+    } catch(e) {}
+    return { error: 'failed' };
+}
+
+// ========== 模拟买入（浏览器端 localStorage） ==========
+function simBuy(symbol, name, price) {
+    if (!price || price <= 0) return;
+    const key = 'halo_sim';
+    let d;
+    try { d = JSON.parse(localStorage.getItem(key) || '{"pos":[],"trades":[],"sold":{}}'); }
+    catch(e) { d = {pos:[],trades:[],sold:{}}; }
+    if (d.pos.find(p => p.symbol === symbol)) return;
+    const today = new Date().toISOString().slice(0,10);
+    if (d.sold[symbol] && d.sold[symbol] >= new Date(Date.now()-90*86400000).toISOString().slice(0,10)) return;
+    d.pos.push({symbol, name, buyPrice: price, buyDate: today, lots: 100, cost: price*10000});
+    d.trades.push({date: today, symbol, name, type: 'buy', price, lots: 100, amount: price*10000});
+    delete d.sold[symbol];
+    localStorage.setItem(key, JSON.stringify(d));
+}
+window.simBuy = simBuy;
+
+
     await Promise.all([
         loadIndexData(),
         loadDashboard(),

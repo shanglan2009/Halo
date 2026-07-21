@@ -146,19 +146,8 @@ function render(d,prices){
   }
 }
 
-// 系统推荐时调用此函数模拟买入
-window.simBuy=async function(symbol,name,price){
-  if(!price||price<=0)return;
-  let d=cleanup(ls());
-  if(d.pos.find(p=>p.symbol===symbol))return; // 已持仓
-  if(d.sold[symbol]&&d.sold[symbol]>=new Date(Date.now()-90*86400000).toISOString().slice(0,10))return; // 3月内卖过
-  const today=new Date().toISOString().slice(0,10);
-  d.pos.push({symbol,name,buyPrice:price,buyDate:today,lots:LOTS,cost:price*LOTS*100});
-  d.trades.push({date:today,symbol,name,type:'buy',price,lots:LOTS,amount:price*LOTS*100});
-  delete d.sold[symbol]; // 再次推荐允许买入
-  save(d);
-  refresh();
-};
+// 系统推荐时调用共享simBuy
+window.simBuy=window.simBuy||function(){};
 
 // 手动卖出
 window.manualSell=async function(symbol){
