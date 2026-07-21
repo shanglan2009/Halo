@@ -499,6 +499,7 @@ async def get_stock_analysis(
     - 机构一致性评分
     """
     _lazy_import()
+    base_pool = QUALITY_STOCK_POOL if QUALITY_STOCK_POOL else INLINE_STOCK_POOL
     cache_key = f"stock_{symbol}"
     if not refresh:
         cached = cache_get(cache_key)
@@ -506,8 +507,7 @@ async def get_stock_analysis(
             return JSONResponse({"success": True, "data": cached, "timestamp": datetime.now().isoformat()})
     
     if not name:
-        # 从股票池查找名称
-        for s in QUALITY_STOCK_POOL:
+        for s in base_pool:
             if s["symbol"] == symbol:
                 name = s["name"]
                 break
@@ -517,7 +517,7 @@ async def get_stock_analysis(
     
     # 查找股票池中的元数据
     pool_info = None
-    for s in QUALITY_STOCK_POOL:
+    for s in base_pool:
         if s["symbol"] == symbol:
             pool_info = s
             if not name or name == symbol:
@@ -562,19 +562,18 @@ async def batch_analysis(request: StockRecommendRequest):
     支持自定义股票列表
     """
     _lazy_import()
+    base_pool = QUALITY_STOCK_POOL if QUALITY_STOCK_POOL else INLINE_STOCK_POOL
     symbols = request.symbols
     if not symbols:
-        # 默认使用优质股票池前10只
-        symbols = [s["symbol"] for s in QUALITY_STOCK_POOL[:10]]
+        symbols = [s["symbol"] for s in base_pool[:10]]
     
     results = []
     errors = []
     
     for symbol in symbols:
-        # 查找名称
         name = symbol
         meta = {}
-        for s in QUALITY_STOCK_POOL:
+        for s in base_pool:
             if s["symbol"] == symbol:
                 name = s["name"]
                 meta = s
@@ -705,7 +704,8 @@ async def cron_refresh(
         data_collector.get_index_data("sz399001")
         
         # 更新前10只核心股票数据
-        for stock_info in QUALITY_STOCK_POOL[:10]:
+        pool = QUALITY_STOCK_POOL if QUALITY_STOCK_POOL else INLINE_STOCK_POOL
+        for stock_info in pool[:10]:
             try:
                 data_collector.collect_stock_data(stock_info["symbol"], stock_info["name"])
             except Exception:
