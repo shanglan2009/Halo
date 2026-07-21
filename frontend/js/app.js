@@ -419,10 +419,9 @@ function renderStockDetail(data) {
         
         <h4 style="color:var(--accent-orange);margin-bottom:12px;">⏱️ 买入时机评估 (权重50%)</h4>
         ${renderScoreBar('时机总分', timing.normalized_score || 0, 100)}
-        ${renderScoreBar('历史PE分位', (timing.details?.historical_pe_score || 0) * 5, 100)}
-        ${renderScoreBar('行业PE比较', (timing.details?.industry_pe_score || 0) * 10, 100)}
-        ${renderScoreBar('均线位置', (timing.details?.ma_position_score || 0) * 10, 100)}
-        ${renderScoreBar('FCF收益率', (timing.details?.fcf_yield_score || 0) * 10, 100)}
+        ${renderScoreBar('历史分位 (40%)', timing.details?.score_historical || 0, 40)}
+        ${renderScoreBar('行业偏离 (30%)', timing.details?.score_industry_pe || 0, 30)}
+        ${renderScoreBar('行业景气 (30%)', timing.details?.score_prosperity || 0, 30)}
         <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:16px;">
             评级: ${timingRating} | 
             买入区域: ${timing.is_buy_zone ? '✅ 是' : '❌ 否'}

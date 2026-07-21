@@ -232,8 +232,8 @@ def build_offline_stock_data(stock_info: dict) -> dict:
     
     # === 差异化买入时机参数（三维估值锚定模型） ===
     # 行业预期净利润增速（基于行业特征）
-    high_growth = ["半导体", "芯片", "新能源", "AI", "人工智能", "创新药"]
-    moderate_growth = ["消费", "白酒", "中药", "家电", "医药", "医疗器械", "军工", "调味品"]
+    high_growth = ["半导体", "芯片", "新能源", "AI", "人工智能", "创新药", "军工"]
+    moderate_growth = ["消费", "白酒", "中药", "家电", "医药", "医疗器械", "调味品"]
     stable_growth = ["银行", "煤炭", "石油", "水电", "通信", "保险", "高速公路"]
     
     if any(k in sector for k in high_growth):
