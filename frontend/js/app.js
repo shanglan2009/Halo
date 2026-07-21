@@ -137,6 +137,7 @@ async function loadAllData(forceRefresh = false) {
 
 async function loadIndexData() {
     // 优先使用东方财富实时数据
+    let liveOk = false;
     try {
         const liveResp = await fetch('/api/index/live');
         const liveJson = await liveResp.json();
@@ -149,11 +150,11 @@ async function loadIndexData() {
                 updateIndexCardLive('sz', d.shenzhen);
             }
             state.indexData = { sh: d.shanghai, sz: d.shenzhen };
-            return;
+            liveOk = true;
         }
-    } catch (err) { console.warn('实时指数获取失败，回退缓存:', err); }
+    } catch (err) { console.warn('实时指数获取失败:', err); }
     
-    // 回退缓存
+    // 回退缓存（补充周期收益率数据）
     try {
         const [shResp, szResp] = await Promise.all([
             fetch(`${INDEX_API}?index_code=sh000001`),
@@ -161,10 +162,27 @@ async function loadIndexData() {
         ]);
         const shData = await shResp.json();
         const szData = await szResp.json();
-        if (shData.success) updateIndexCard('sh', shData.data);
-        if (szData.success) updateIndexCard('sz', szData.data);
-        state.indexData = { sh: shData.data, sz: szData.data };
+        if (liveOk) {
+            if (shData.success) updateIndexReturns('sh', shData.data);
+            if (szData.success) updateIndexReturns('sz', szData.data);
+        } else {
+            if (shData.success) updateIndexCard('sh', shData.data);
+            if (szData.success) updateIndexCard('sz', szData.data);
+            state.indexData = { sh: shData.data, sz: szData.data };
+        }
     } catch (err) { console.error('加载指数数据失败:', err); }
+}
+
+function updateIndexReturns(prefix, data) {
+    if (!data || !data.returns) return;
+    ['1m', '3m', '1y'].forEach(period => {
+        const el = $(`#${prefix}-${period}`);
+        if (el && data.returns[period] !== undefined) {
+            const val = data.returns[period];
+            el.textContent = `${val >= 0 ? '+' : ''}${val.toFixed(2)}%`;
+            el.style.color = val >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+        }
+    });
 }
 
 function updateIndexCardLive(prefix, data) {
@@ -295,10 +313,10 @@ async function loadRecommendations() {
             enrichStockData(json.data.recommendations.map(r => r.symbol));
             $('#rec-count') && ($('#rec-count').textContent = `${json.data.total} 只`);
         } else {
-            tbody.innerHTML = '<tr><td colspan="8" class="loading-cell">加载失败</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="12" class="loading-cell">加载失败</td></tr>';
         }
     } catch (err) {
-        tbody.innerHTML = '<tr><td colspan="8" class="loading-cell">数据加载失败</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" class="loading-cell">数据加载失败</td></tr>';
         console.error('加载推荐列表失败:', err);
     }
 }

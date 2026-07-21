@@ -9,7 +9,7 @@ Halo - 东方财富公开API数据获取
 """
 import json
 import urllib.request
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 
@@ -121,8 +121,7 @@ def get_stock_history_high(symbol: str) -> dict:
     year_high_date = ""
     
     # 计算1年前日期
-    import datetime as _dt
-    one_year_ago = (_dt.datetime.now() - _dt.timedelta(days=365)).strftime("%Y-%m-%d")
+    one_year_ago = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
     
     for line in klines:
         parts = line.split(",")
