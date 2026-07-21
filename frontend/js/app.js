@@ -155,6 +155,7 @@ window.simBuy = simBuy;
 
 async function loadAllData(forceRefresh = false) {
     updateStatus(false, '加载中...');
+    await Promise.all([
         loadIndexData(),
         loadDashboard(),
         loadStockPool(),
@@ -257,12 +258,6 @@ async function loadDashboard() {
             state.recommendations = json.data.recommendations;
             renderQuickRecommendations(json.data.recommendations);
             enrichStockData(json.data.recommendations.map(r => r.symbol)).then(() => {
-                json.data.recommendations.forEach(r => {
-                    const el = document.querySelector(`.enrich-price[data-sym="${r.symbol}"]`);
-                    const price = el ? parseFloat(el.textContent) : 0;
-                    if (price > 0 && window.simBuy) window.simBuy(r.symbol, r.name, price);
-                });
-            });
             $('#rec-count') && ($('#rec-count').textContent = `${json.data.recommendations.length} 只`);
         } else {
             container.innerHTML = '<div class="loading">暂无推荐数据</div>';
