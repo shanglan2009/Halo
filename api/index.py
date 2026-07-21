@@ -117,6 +117,39 @@ def cache_set(key: str, data):
 
 # ========== 内联回退数据（后端模块不可用时的保底） ==========
 
+INLINE_STOCK_POOL = [
+    {"symbol": "600519", "name": "贵州茅台", "sector": "白酒/消费", "dividend_yield": 2.5, "state_ownership": 4.5, "reason": "品牌护城河极深，越陈越香"},
+    {"symbol": "000858", "name": "五粮液", "sector": "白酒/消费", "dividend_yield": 2.2, "state_ownership": 3.0, "reason": "浓香龙头，品牌价值随时间增值"},
+    {"symbol": "600809", "name": "山西汾酒", "sector": "白酒/消费", "dividend_yield": 1.8, "state_ownership": 2.5, "reason": "清香型龙头，品牌复兴"},
+    {"symbol": "600436", "name": "片仔癀", "sector": "中药/消费", "dividend_yield": 2.0, "state_ownership": 5.0, "reason": "国家保密配方，越久越值钱"},
+    {"symbol": "000538", "name": "云南白药", "sector": "中药/消费", "dividend_yield": 3.5, "state_ownership": 10.0, "reason": "国家保密配方，百年品牌"},
+    {"symbol": "600085", "name": "同仁堂", "sector": "中药/消费", "dividend_yield": 2.5, "state_ownership": 8.0, "reason": "350年老字号，品牌随时间增值"},
+    {"symbol": "600900", "name": "长江电力", "sector": "水电/清洁能源", "dividend_yield": 3.8, "state_ownership": 55.0, "reason": "水电资产永续经营，现金流稳定"},
+    {"symbol": "600886", "name": "国投电力", "sector": "水电/清洁能源", "dividend_yield": 3.2, "state_ownership": 45.0, "reason": "清洁能源龙头，国有资本控股"},
+    {"symbol": "601088", "name": "中国神华", "sector": "煤炭/能源", "dividend_yield": 6.5, "state_ownership": 60.0, "reason": "煤炭电力铁路一体化，超高分红"},
+    {"symbol": "601857", "name": "中国石油", "sector": "石油/能源", "dividend_yield": 4.5, "state_ownership": 80.0, "reason": "国家能源安全核心资产"},
+    {"symbol": "600028", "name": "中国石化", "sector": "石油/能源", "dividend_yield": 5.5, "state_ownership": 70.0, "reason": "炼化加油站网络，稳定高分红"},
+    {"symbol": "601939", "name": "建设银行", "sector": "银行/金融", "dividend_yield": 5.8, "state_ownership": 60.0, "reason": "国有大行，分红率高"},
+    {"symbol": "601398", "name": "工商银行", "sector": "银行/金融", "dividend_yield": 5.5, "state_ownership": 65.0, "reason": "全球最大银行，国有控股"},
+    {"symbol": "601288", "name": "农业银行", "sector": "银行/金融", "dividend_yield": 5.6, "state_ownership": 70.0, "reason": "国有大行，三农金融服务"},
+    {"symbol": "600036", "name": "招商银行", "sector": "银行/金融", "dividend_yield": 4.5, "state_ownership": 25.0, "reason": "零售银行之王，ROE行业领先"},
+    {"symbol": "601318", "name": "中国平安", "sector": "保险/金融", "dividend_yield": 4.2, "state_ownership": 5.0, "reason": "综合金融巨头，保险银行科技"},
+    {"symbol": "600690", "name": "海尔智家", "sector": "家电/消费", "dividend_yield": 3.0, "state_ownership": 10.0, "reason": "全球化家电龙头，海外收入超50%"},
+    {"symbol": "000333", "name": "美的集团", "sector": "家电/消费", "dividend_yield": 3.5, "state_ownership": 8.0, "reason": "家电综合龙头，全球布局"},
+    {"symbol": "000651", "name": "格力电器", "sector": "家电/消费", "dividend_yield": 4.5, "state_ownership": 15.0, "reason": "空调霸主，品牌护城河"},
+    {"symbol": "603288", "name": "海天味业", "sector": "调味品/消费", "dividend_yield": 1.8, "state_ownership": 2.0, "reason": "调味品绝对龙头，渠道壁垒深厚"},
+    {"symbol": "600887", "name": "伊利股份", "sector": "食品饮料/消费", "dividend_yield": 3.2, "state_ownership": 5.0, "reason": "乳业龙头，消费升级受益"},
+    {"symbol": "002415", "name": "海康威视", "sector": "AI/安防/科技", "dividend_yield": 2.8, "state_ownership": 8.0, "reason": "AI视觉龙头，全球第一"},
+    {"symbol": "300750", "name": "宁德时代", "sector": "新能源/电池", "dividend_yield": 0.8, "state_ownership": 3.0, "reason": "动力电池全球龙头，技术壁垒深厚"},
+    {"symbol": "002594", "name": "比亚迪", "sector": "新能源/汽车", "dividend_yield": 0.5, "state_ownership": 2.0, "reason": "新能源车全球龙头，垂直整合"},
+    {"symbol": "600276", "name": "恒瑞医药", "sector": "医药/创新药", "dividend_yield": 1.2, "state_ownership": 3.0, "reason": "创新药龙头，研发壁垒"},
+    {"symbol": "300760", "name": "迈瑞医疗", "sector": "医疗器械/医药", "dividend_yield": 1.5, "state_ownership": 2.0, "reason": "医疗器械龙头，全球化布局"},
+    {"symbol": "600941", "name": "中国移动", "sector": "通信/运营商", "dividend_yield": 4.5, "state_ownership": 70.0, "reason": "通信基础设施，数字经济底座"},
+    {"symbol": "601728", "name": "中国电信", "sector": "通信/运营商", "dividend_yield": 2.5, "state_ownership": 65.0, "reason": "云计算IDC增长，数字化转型受益"},
+    {"symbol": "688981", "name": "中芯国际", "sector": "半导体/芯片", "dividend_yield": 0.3, "state_ownership": 10.0, "reason": "芯片制造龙头，国产替代核心"},
+    {"symbol": "002371", "name": "北方华创", "sector": "半导体/设备", "dividend_yield": 0.4, "state_ownership": 8.0, "reason": "半导体设备龙头，国产替代"},
+]
+
 FALLBACK_INDEX = {
     "latest": {"date": datetime.now().strftime("%Y-%m-%d"), "close": 3300, "open": 3280, "high": 3320, "low": 3270},
     "returns": {"1m": 2.5, "3m": 5.0, "6m": 8.0, "1y": 12.0},
@@ -394,9 +427,13 @@ async def get_recommendations(
     
     # 遍历优质股票池（全部评分，再按limit截断输出）
     # 优先过滤沪深300成分股
+    base_pool = QUALITY_STOCK_POOL if QUALITY_STOCK_POOL else INLINE_STOCK_POOL
     hs300_data = load_cached_json("hs300_constituents.json")
     hs300_codes = {s["symbol"] for s in hs300_data.get("stocks", [])} if hs300_data else set()
-    pool = filter_hs300(QUALITY_STOCK_POOL, hs300_codes)
+    if filter_hs300 and hs300_codes:
+        pool = filter_hs300(base_pool, hs300_codes)
+    else:
+        pool = base_pool
     if sector:
         pool = [s for s in pool if sector in s.get("sector", "")]
     
@@ -698,11 +735,12 @@ async def cron_refresh(
 async def get_quality_pool():
     """获取优质股票池列表"""
     _lazy_import()
+    pool = QUALITY_STOCK_POOL if QUALITY_STOCK_POOL else INLINE_STOCK_POOL
     return JSONResponse({
         "success": True,
         "data": {
-            "pool": QUALITY_STOCK_POOL,
-            "total": len(QUALITY_STOCK_POOL),
+            "pool": pool,
+            "total": len(pool),
             "description": "符合7大选股特征的中国A股优质标的池",
             "features": [
                 "1. 资产随时间增值（越久越值钱）",
