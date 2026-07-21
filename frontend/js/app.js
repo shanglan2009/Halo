@@ -34,6 +34,10 @@ const state = {
     lastRefresh: null,
 };
 
+// ========== 排序状态 ==========
+let sortField = 'final_score';
+let sortDesc = true;
+
 // ========== DOM引用 ==========
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
@@ -50,6 +54,21 @@ document.addEventListener('DOMContentLoaded', () => {
 // ========== 事件委托 (防XSS) ==========
 function initEventDelegation() {
     document.addEventListener('click', (e) => {
+        // 排序表头点击
+        const sortTh = e.target.closest('th.sortable');
+        if (sortTh && sortTh.dataset.sort) {
+            const field = sortTh.dataset.sort;
+            if (sortField === field) {
+                sortDesc = !sortDesc;
+            } else {
+                sortField = field;
+                sortDesc = true;
+            }
+            if (state.recommendations.length > 0) {
+                renderRecommendationsTable(state.recommendations);
+            }
+            return;
+        }
         // 快速推荐卡片点击
         const recItem = e.target.closest('.quick-rec-item');
         if (recItem && recItem.dataset.symbol) {
@@ -262,7 +281,23 @@ function renderRecommendationsTable(recs) {
     const tbody = $('#recommendations-tbody');
     if (!tbody) return;
     
-    if (!recs || recs.length === 0) {
+    // 排序
+    const sorted = [...recs].sort((a, b) => {
+        const va = a[sortField] || 0;
+        const vb = b[sortField] || 0;
+        return sortDesc ? vb - va : va - vb;
+    });
+    
+    // 更新表头指示器
+    $$('#recommendations-table th.sortable').forEach(th => {
+        th.classList.toggle('sorted', th.dataset.sort === sortField);
+        const arrow = sortDesc ? ' ▼' : ' ▲';
+        if (th.dataset.sort === 'final_score') th.childNodes[0].textContent = '综合评分' + arrow;
+        else if (th.dataset.sort === 'ias_score') th.childNodes[0].textContent = 'IAS评分' + (th.classList.contains('sorted') ? arrow : '');
+        else if (th.dataset.sort === 'timing_score') th.childNodes[0].textContent = '时机评分' + (th.classList.contains('sorted') ? arrow : '');
+    });
+    
+    if (!sorted || sorted.length === 0) {
         tbody.innerHTML = `
             <tr><td colspan="8">
                 <div class="empty-state">
@@ -274,7 +309,7 @@ function renderRecommendationsTable(recs) {
         return;
     }
     
-    tbody.innerHTML = recs.map((rec, i) => {
+    tbody.innerHTML = sorted.map((rec, i) => {
         const scoreClass = rec.final_score >= 75 ? 'score-high' : 
                           rec.final_score >= 60 ? 'score-mid' : 'score-low';
         const iasClass = rec.ias_score >= 70 ? 'score-high' : 

@@ -52,7 +52,7 @@ class FeatureCheck:
     
     @property
     def all_passed(self) -> bool:
-        return self.passed_count >= 5  # 至少满足5个特征
+        return self.passed_count >= 4  # 至少满足4个特征
     
     def to_dict(self) -> dict:
         return {
@@ -357,7 +357,7 @@ class RecommendationEngine:
         elif not rec.timing_result.is_buy_zone:
             rec.recommendation = "⏳ 买入时机未到（偏贵）"
         elif not rec.features.all_passed:
-            rec.recommendation = "⚠️ 未满足核心选股特征"
+            rec.recommendation = "⚠️ 选股特征不足4项"
         
         return rec
     
