@@ -139,20 +139,13 @@ async function loadIndexData() {
     // 优先使用东方财富实时数据
     let liveOk = false;
     try {
-        const liveResp = await fetch('/api/index/live');
-        const liveJson = await liveResp.json();
-        if (liveJson.success && liveJson.data) {
-            const d = liveJson.data;
-            if (d.shanghai && !d.shanghai.error) {
-                updateIndexCardLive('sh', d.shanghai);
-            }
-            if (d.shenzhen && !d.shenzhen.error) {
-                updateIndexCardLive('sz', d.shenzhen);
-            }
-            state.indexData = { sh: d.shanghai, sz: d.shenzhen };
-            liveOk = true;
-        }
-    } catch (err) { console.warn('实时指数获取失败:', err); }
+        // 浏览器直连东方财富API
+        const [shD, szD] = await Promise.all([
+            fetchEastMoneyIndex('1.000001'),
+            fetchEastMoneyIndex('0.399001'),
+        ]);
+        if (shD && !shD.error) { updateIndexCardLive('sh', shD); liveOk = true; }
+        if (szD && !szD.error) { updateIndexCardLive('sz', szD); liveOk = true; }
     
     // 回退缓存（补充周期收益率数据）
     try {
@@ -423,31 +416,75 @@ async function loadStockPool() {
 }
 
 
-// ========== 东方财富实时数据富化 ==========
+// ========== 东方财富实时数据富化（浏览器直连） ==========
 async function enrichStockData(symbols) {
     if (!symbols || symbols.length === 0) return;
     const unique = [...new Set(symbols)].slice(0, 10);
+    for (const sym of unique) {
+        try {
+            const info = await fetchEastMoneyStock(sym);
+            if (!info || info.error) continue;
+            $$(`.enrich-price[data-sym="${sym}"]`).forEach(el => { el.textContent = info.price ? info.price.toFixed(2) : '--'; });
+            $$(`.enrich-hist-high[data-sym="${sym}"]`).forEach(el => { el.textContent = info.allTimeHigh ? info.allTimeHigh.toFixed(2) : '--'; });
+            $$(`.enrich-year-high[data-sym="${sym}"]`).forEach(el => { el.textContent = info.yearHigh ? info.yearHigh.toFixed(2) : '--'; });
+            $$(`.enrich-pe[data-sym="${sym}"]`).forEach(el => { el.textContent = info.pe ? info.pe.toFixed(1) : '--'; });
+        } catch (err) { /* silent */ }
+    }
+}
+
+async function fetchEastMoneyIndex(secid) {
     try {
-        const resp = await fetch(`/api/stocks/enrich?symbols=${unique.join(',')}`);
-        const json = await resp.json();
-        if (json.success && json.data) {
-            for (const [sym, info] of Object.entries(json.data)) {
-                if (info.error) continue;
-                $$(`.enrich-price[data-sym="${sym}"]`).forEach(el => {
-                    el.textContent = info.price ? info.price.toFixed(2) : '--';
-                });
-                $$(`.enrich-hist-high[data-sym="${sym}"]`).forEach(el => {
-                    el.textContent = info.all_time_high ? info.all_time_high.toFixed(2) : '--';
-                });
-                $$(`.enrich-year-high[data-sym="${sym}"]`).forEach(el => {
-                    el.textContent = info.year_high ? info.year_high.toFixed(2) : '--';
-                });
-                $$(`.enrich-pe[data-sym="${sym}"]`).forEach(el => {
-                    el.textContent = info.pe_ttm ? info.pe_ttm.toFixed(1) : '--';
-                });
+        const url = `https://push2.eastmoney.com/api/qt/stock/get?secid=${secid}&fields=f43,f58,f170,f169`;
+        const r = await fetch(url);
+        const j = await r.json();
+        if (j && j.data) return {
+            price: (j.data.f43 || 0) / 100,
+            name: j.data.f58 || '',
+            change_pct: (j.data.f170 || 0) / 100,
+        };
+    } catch(e) {}
+    return { error: 'failed' };
+}
+
+async function fetchEastMoneyStock(symbol) {
+    const prefix = symbol.startsWith('6') ? '1' : '0';
+    const secid = `${prefix}.${symbol}`;
+    try {
+        // 实时行情
+        const qtUrl = `https://push2.eastmoney.com/api/qt/stock/get?secid=${secid}&fields=f43,f57,f58,f107,f170,f171`;
+        const qtResp = await fetch(qtUrl);
+        const qtJson = await qtResp.json();
+        if (!qtJson || !qtJson.data) return { error: 'no data' };
+        const d = qtJson.data;
+        const result = {
+            name: d.f58 || '',
+            price: (d.f43 || 0) / 100,
+            pe: (d.f107 || 0) / 100,
+            changePct: (d.f170 || 0) / 100,
+        };
+        // 历史最高
+        try {
+            const klUrl = `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${secid}&fields1=f1,f2&fields2=f51,f52,f53,f54,f55&klt=101&fqt=1&end=20500101&lmt=5000`;
+            const klResp = await fetch(klUrl);
+            const klJson = await klResp.json();
+            if (klJson && klJson.data && klJson.data.klines) {
+                let allTimeHigh = 0, yearHigh = 0;
+                const yearAgo = new Date();
+                yearAgo.setFullYear(yearAgo.getFullYear() - 1);
+                const yStr = yearAgo.toISOString().slice(0,10);
+                for (const line of klJson.data.klines) {
+                    const p = line.split(',');
+                    if (p.length < 4) continue;
+                    const h = parseFloat(p[3]) || 0;
+                    if (h > allTimeHigh) allTimeHigh = h;
+                    if (p[0] >= yStr && h > yearHigh) yearHigh = h;
+                }
+                result.allTimeHigh = allTimeHigh;
+                result.yearHigh = yearHigh;
             }
-        }
-    } catch (err) { console.warn('富化数据获取失败:', err); }
+        } catch(e) { /* K-line fetch failed, leave as undefined */ }
+        return result;
+    } catch(e) { return { error: 'fetch failed' }; }
 }
 
 
