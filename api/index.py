@@ -313,7 +313,7 @@ def build_offline_stock_data(stock_info: dict) -> dict:
             "current_pe": pe_val,
             "industry_avg_pe": ind_pe,
             "industry_growth": ind_growth,
-            "pb_percentile": 0.20 + div_yield * 0.02,  # 高分红→低PB分位(破净)
+            "pb_percentile": max(0.05, 0.40 - div_yield * 0.03),  # 高分红→低PB分位(便宜)
             "dividend_yield": div_yield / 100.0,  # 转为小数(如3.5→0.035)
         },
         "meta": {
@@ -489,6 +489,8 @@ async def get_recommendations(
         stock_data["meta"]["dividend_yield"] = stock_info.get("dividend_yield", 0)
         stock_data["meta"]["state_ownership"] = stock_info.get("state_ownership", 0)
         stock_data["meta"]["reason"] = stock_info.get("reason", "")
+        # 传播股息率到timing评估
+        stock_data["timing"]["dividend_yield"] = stock_info.get("dividend_yield", 0) / 100.0
         
         try:
             rec = recommendation_engine.recommend(stock_data)
@@ -576,6 +578,7 @@ async def get_stock_analysis(
         stock_data["meta"]["dividend_yield"] = pool_info.get("dividend_yield", 0)
         stock_data["meta"]["state_ownership"] = pool_info.get("state_ownership", 0)
         stock_data["meta"]["reason"] = pool_info.get("reason", "")
+        stock_data["timing"]["dividend_yield"] = pool_info.get("dividend_yield", 0) / 100.0
     
     try:
         rec = recommendation_engine.recommend(stock_data)
@@ -631,6 +634,7 @@ async def batch_analysis(request: StockRecommendRequest):
             stock_data["meta"]["dividend_yield"] = meta.get("dividend_yield", 0)
             stock_data["meta"]["state_ownership"] = meta.get("state_ownership", 0)
             stock_data["meta"]["reason"] = meta.get("reason", "")
+            stock_data["timing"]["dividend_yield"] = meta.get("dividend_yield", 0) / 100.0
         
         try:
             rec = recommendation_engine.recommend(stock_data)
