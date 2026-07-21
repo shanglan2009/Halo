@@ -384,7 +384,7 @@ async def get_recommendations(
     
     # 引擎不可用时使用内联回退数据
     if not _lazy_import():
-        fb = dict(FALLBACK_RECOMMENDATIONS)
+        fb = copy.deepcopy(FALLBACK_RECOMMENDATIONS)
         fb["timestamp"] = datetime.now().isoformat()
         cache_set(cache_key, fb)
         return JSONResponse({"success": True, "data": fb, "timestamp": datetime.now().isoformat()})
@@ -608,26 +608,27 @@ async def market_overview():
     }
     
     # 获取上证指数
-    sh_data = data_collector.get_index_data("sh000001")
-    if "error" not in sh_data:
-        overview["indices"]["shanghai"] = {
-            "name": "上证指数",
-            "latest": sh_data.get("latest", {}),
-            "returns": sh_data.get("returns", {}),
-        }
-    
-    # 获取深成指数
-    sz_data = data_collector.get_index_data("sz399001")
-    if "error" not in sz_data:
-        overview["indices"]["shenzhen"] = {
-            "name": "深证成指",
-            "latest": sz_data.get("latest", {}),
-            "returns": sz_data.get("returns", {}),
-        }
-    
-    # 获取行业板块
-    sectors = data_collector.get_sector_data()
-    overview["sectors"] = sectors[:10]
+    if data_collector is not None:
+        sh_data = data_collector.get_index_data("sh000001")
+        if "error" not in sh_data:
+            overview["indices"]["shanghai"] = {
+                "name": "上证指数",
+                "latest": sh_data.get("latest", {}),
+                "returns": sh_data.get("returns", {}),
+            }
+        
+        # 获取深成指数
+        sz_data = data_collector.get_index_data("sz399001")
+        if "error" not in sz_data:
+            overview["indices"]["shenzhen"] = {
+                "name": "深证成指",
+                "latest": sz_data.get("latest", {}),
+                "returns": sz_data.get("returns", {}),
+            }
+        
+        # 获取行业板块
+        sectors = data_collector.get_sector_data()
+        overview["sectors"] = sectors[:10]
     
     cache_set(cache_key, overview)
     return JSONResponse({"success": True, "data": overview, "timestamp": datetime.now().isoformat()})
