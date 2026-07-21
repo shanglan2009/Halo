@@ -126,7 +126,10 @@ function initControls() {
 // ========== 东方财富指数（仪表盘专用） ==========
 async function fetchEastMoneyIndex(secid) {
     try {
-        const r = await fetch(`https://push2.eastmoney.com/api/qt/stock/get?secid=${secid}&fields=f43,f58,f170`);
+        const ctrl = new AbortController();
+        const tm = setTimeout(() => ctrl.abort(), 3000);
+        const r = await fetch(`https://push2.eastmoney.com/api/qt/stock/get?secid=${secid}&fields=f43,f58,f170`, {signal: ctrl.signal});
+        clearTimeout(tm);
         const j = await r.json();
         if (j?.data) return { price: (j.data.f43||0)/100, name: j.data.f58||'', change_pct: (j.data.f170||0)/100 };
     } catch(e) {}
@@ -162,19 +165,7 @@ async function loadAllData(forceRefresh = false) {
 }
 
 async function loadIndexData() {
-    // 优先使用东方财富实时数据
-    let liveOk = false;
-    try {
-        // 浏览器直连东方财富API
-        const [shD, szD] = await Promise.all([
-            fetchEastMoneyIndex('1.000001'),
-            fetchEastMoneyIndex('0.399001'),
-        ]);
-        if (shD && !shD.error) { updateIndexCardLive('sh', shD); liveOk = true; }
-        if (szD && !szD.error) { updateIndexCardLive('sz', szD); liveOk = true; }
-    } catch (err) { console.warn('实时指数获取失败:', err); }
-    
-    // 回退缓存（补充周期收益率数据）
+    // 先用缓存快速渲染
     try {
         const [shResp, szResp] = await Promise.all([
             fetch(`${INDEX_API}?index_code=sh000001`),
@@ -182,15 +173,20 @@ async function loadIndexData() {
         ]);
         const shData = await shResp.json();
         const szData = await szResp.json();
-        if (liveOk) {
-            if (shData.success) updateIndexReturns('sh', shData.data);
-            if (szData.success) updateIndexReturns('sz', szData.data);
-        } else {
-            if (shData.success) updateIndexCard('sh', shData.data);
-            if (szData.success) updateIndexCard('sz', szData.data);
-            state.indexData = { sh: shData.data, sz: szData.data };
-        }
+        if (shData.success) updateIndexCard('sh', shData.data);
+        if (szData.success) updateIndexCard('sz', szData.data);
+        state.indexData = { sh: shData.data, sz: szData.data };
     } catch (err) { console.error('加载指数数据失败:', err); }
+    
+    // 后台更新实时数据
+    try {
+        const [shD, szD] = await Promise.all([
+            fetchEastMoneyIndex('1.000001'),
+            fetchEastMoneyIndex('0.399001'),
+        ]);
+        if (shD && !shD.error) updateIndexCardLive('sh', shD);
+        if (szD && !szD.error) updateIndexCardLive('sz', szD);
+    } catch (err) { /* silent */ }
 }
 
 function updateIndexReturns(prefix, data) {
@@ -336,14 +332,7 @@ async function loadRecommendations() {
         if (json.success && json.data.recommendations) {
             state.recommendations = json.data.recommendations;
             renderRecommendationsTable(json.data.recommendations);
-            enrichStockData(json.data.recommendations.map(r => r.symbol)).then(() => {
-                // 触发模拟买入
-                json.data.recommendations.forEach(r => {
-                    const el = document.querySelector(`.enrich-price[data-sym="${r.symbol}"]`);
-                    const price = el ? parseFloat(el.textContent) : 0;
-                    if (price > 0 && window.simBuy) window.simBuy(r.symbol, r.name, price);
-                });
-            });
+            enrichStockData(json.data.recommendations.map(r => r.symbol));
             $('#rec-count') && ($('#rec-count').textContent = `${json.data.total} 只`);
         } else {
             tbody.innerHTML = '<tr><td colspan="12" class="loading-cell">加载失败</td></tr>';
@@ -456,62 +445,35 @@ async function loadStockPool() {
 }
 
 
-// ========== 东方财富实时数据富化（并行加载） ==========
+// ========== 东方财富实时数据富化（轻量非阻塞） ==========
 async function enrichStockData(symbols) {
     if (!symbols || symbols.length === 0) return;
-    const unique = [...new Set(symbols)].slice(0, 10);
-    // 并行处理，每批3个
-    for (let i = 0; i < unique.length; i += 3) {
-        const batch = unique.slice(i, i + 3);
-        await Promise.all(batch.map(async (sym) => {
-            try {
-                const info = await fetchEastMoneyStock(sym);
-                if (!info || info.error) return;
-                $$(`.enrich-price[data-sym="${sym}"]`).forEach(el => { el.textContent = info.price ? info.price.toFixed(2) : '--'; });
-                $$(`.enrich-hist-high[data-sym="${sym}"]`).forEach(el => { el.textContent = info.allTimeHigh ? info.allTimeHigh.toFixed(2) : '--'; });
-                $$(`.enrich-year-high[data-sym="${sym}"]`).forEach(el => { el.textContent = info.yearHigh ? info.yearHigh.toFixed(2) : '--'; });
-                $$(`.enrich-pe[data-sym="${sym}"]`).forEach(el => { el.textContent = info.pe ? info.pe.toFixed(1) : '--'; });
-            } catch (err) { /* skip */ }
-        }));
-    }
-}
-
-async function fetchEastMoneyStock(symbol) {
-    const prefix = symbol.startsWith('6') ? '1' : '0';
-    const secid = `${prefix}.${symbol}`;
-    try {
-        const qtUrl = `https://push2.eastmoney.com/api/qt/stock/get?secid=${secid}&fields=f43,f57,f58,f107,f170`;
-        const qtResp = await fetch(qtUrl);
-        const qtJson = await qtResp.json();
-        if (!qtJson || !qtJson.data) return { error: 'no data' };
-        const d = qtJson.data;
-        const result = {
-            price: (d.f43 || 0) / 100,
-            pe: (d.f107 || 0) / 100,
-        };
-        // 历史最高（并行，2秒超时）
+    const unique = [...new Set(symbols)].slice(0, 8);
+    // 只取行情（快速），跳过K线
+    await Promise.all(unique.map(async (sym) => {
         try {
-            const klUrl = `https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=${secid}&fields1=f1,f2&fields2=f51,f54&klt=101&fqt=1&end=20500101&lmt=2000`;
+            const pfx = sym.startsWith('6') ? '1' : '0';
             const ctrl = new AbortController();
             const tm = setTimeout(() => ctrl.abort(), 2000);
-            const klResp = await fetch(klUrl, { signal: ctrl.signal });
+            const r = await fetch(`https://push2.eastmoney.com/api/qt/stock/get?secid=${pfx}.${sym}&fields=f43,f107`, {signal: ctrl.signal});
             clearTimeout(tm);
-            const klJson = await klResp.json();
-            if (klJson?.data?.klines) {
-                let allTimeHigh = 0, yearHigh = 0;
-                const yStr = new Date(Date.now() - 365*86400000).toISOString().slice(0,10);
-                for (const line of klJson.data.klines) {
-                    const p = line.split(',');
-                    const h = parseFloat(p[1]) || 0;
-                    if (h > allTimeHigh) allTimeHigh = h;
-                    if (p[0] >= yStr && h > yearHigh) yearHigh = h;
+            const j = await r.json();
+            if (j?.data) {
+                const price = (j.data.f43||0)/100;
+                const pe = (j.data.f107||0)/100;
+                if (price > 0) {
+                    $$(`.enrich-price[data-sym="${sym}"]`).forEach(el => { el.textContent = price.toFixed(2); });
+                    if (pe > 0) $$(`.enrich-pe[data-sym="${sym}"]`).forEach(el => { el.textContent = pe.toFixed(1); });
                 }
-                result.allTimeHigh = allTimeHigh;
-                result.yearHigh = yearHigh;
             }
-        } catch(e) { /* kline timeout/error, leave undefined */ }
-        return result;
-    } catch(e) { return { error: 'fetch failed' }; }
+        } catch(e) { /* skip */ }
+    }));
+    // 触发simBuy（使用已填充的价格）
+    unique.forEach(sym => {
+        const el = document.querySelector(`.enrich-price[data-sym="${sym}"]`);
+        const price = el ? parseFloat(el.textContent) : 0;
+        if (price > 0 && window.simBuy) window.simBuy(sym, '', price);
+    });
 }
 
 
