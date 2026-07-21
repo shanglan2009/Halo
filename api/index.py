@@ -34,6 +34,10 @@ QUALITY_STOCK_POOL = []
 filter_hs300 = None
 sim_engine = None
 
+# 东方财富实时数据（轻量，始终可用）
+eastmoney_index = None
+eastmoney_stock = None
+
 def _lazy_import():
     """延迟导入重型模块"""
     global ias_engine, timing_evaluator, data_collector
@@ -52,6 +56,14 @@ def _lazy_import():
     except Exception as e:
         print(f"[WARN] 核心引擎导入失败: {e}", flush=True)
         return False
+    # 东方财富（轻量，优先加载）
+    try:
+        from scripts.eastmoney import get_index_both as _gib, get_full_stock_info as _gfs
+        global eastmoney_index, eastmoney_stock
+        eastmoney_index = _gib
+        eastmoney_stock = _gfs
+    except Exception:
+        pass
     try:
         from scripts.data_collector import data_collector as _dc
         data_collector = _dc
@@ -415,6 +427,46 @@ async def get_index_data(index_code: str = Query("sh000001", description="指数
     
     cache_set(cache_key, data)
     return JSONResponse({"success": True, "data": data, "timestamp": datetime.now().isoformat()})
+
+
+@app.get("/api/index/live")
+async def get_index_live():
+    """
+    获取东方财富实时指数数据（上证+深证）
+    优先于缓存数据，直接从东方财富API获取
+    """
+    _lazy_import()
+    if eastmoney_index is None:
+        return JSONResponse({"success": False, "message": "东方财富接口不可用"}, status_code=503)
+    try:
+        data = eastmoney_index()
+        return JSONResponse({"success": True, "data": data, "timestamp": datetime.now().isoformat()})
+    except Exception as e:
+        return JSONResponse({"success": False, "message": f"获取失败: {e}"}, status_code=500)
+
+
+@app.get("/api/stocks/enrich")
+async def enrich_stocks(symbols: str = Query("", description="逗号分隔的股票代码")):
+    """
+    批量获取东方财富实时行情（股价/PE/历史最高等）
+    用于前端表格四栏数据
+    """
+    _lazy_import()
+    if eastmoney_stock is None:
+        return JSONResponse({"success": False, "message": "东方财富接口不可用"}, status_code=503)
+    
+    sym_list = [s.strip() for s in symbols.split(",") if s.strip()] if symbols else []
+    if not sym_list:
+        return JSONResponse({"success": True, "data": {}, "timestamp": datetime.now().isoformat()})
+    
+    result = {}
+    for sym in sym_list[:10]:  # 限10只防超时
+        try:
+            result[sym] = eastmoney_stock(sym)
+        except Exception as e:
+            result[sym] = {"error": str(e)}
+    
+    return JSONResponse({"success": True, "data": result, "timestamp": datetime.now().isoformat()})
 
 
 @app.get("/api/stocks/recommend")

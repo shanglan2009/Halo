@@ -136,21 +136,45 @@ async function loadAllData(forceRefresh = false) {
 }
 
 async function loadIndexData() {
+    // 优先使用东方财富实时数据
+    try {
+        const liveResp = await fetch('/api/index/live');
+        const liveJson = await liveResp.json();
+        if (liveJson.success && liveJson.data) {
+            const d = liveJson.data;
+            if (d.shanghai && !d.shanghai.error) {
+                updateIndexCardLive('sh', d.shanghai);
+            }
+            if (d.shenzhen && !d.shenzhen.error) {
+                updateIndexCardLive('sz', d.shenzhen);
+            }
+            state.indexData = { sh: d.shanghai, sz: d.shenzhen };
+            return;
+        }
+    } catch (err) { console.warn('实时指数获取失败，回退缓存:', err); }
+    
+    // 回退缓存
     try {
         const [shResp, szResp] = await Promise.all([
             fetch(`${INDEX_API}?index_code=sh000001`),
             fetch(`${INDEX_API}?index_code=sz399001`),
         ]);
-        
         const shData = await shResp.json();
         const szData = await szResp.json();
-        
         if (shData.success) updateIndexCard('sh', shData.data);
         if (szData.success) updateIndexCard('sz', szData.data);
-        
         state.indexData = { sh: shData.data, sz: szData.data };
-    } catch (err) {
-        console.error('加载指数数据失败:', err);
+    } catch (err) { console.error('加载指数数据失败:', err); }
+}
+
+function updateIndexCardLive(prefix, data) {
+    const priceEl = $(`#${prefix}-price`);
+    if (priceEl) priceEl.textContent = formatNumber(data.price);
+    const change = data.change_pct || 0;
+    const changeEl = $(`#${prefix}-change`);
+    if (changeEl) {
+        changeEl.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
+        changeEl.className = `index-change ${change >= 0 ? 'up' : 'down'}`;
     }
 }
 
@@ -198,6 +222,7 @@ async function loadDashboard() {
         if (json.success && json.data.recommendations) {
             state.recommendations = json.data.recommendations;
             renderQuickRecommendations(json.data.recommendations);
+            enrichStockData(json.data.recommendations.map(r => r.symbol));
             $('#rec-count') && ($('#rec-count').textContent = `${json.data.recommendations.length} 只`);
         } else {
             container.innerHTML = '<div class="loading">暂无推荐数据</div>';
@@ -267,6 +292,7 @@ async function loadRecommendations() {
         if (json.success && json.data.recommendations) {
             state.recommendations = json.data.recommendations;
             renderRecommendationsTable(json.data.recommendations);
+            enrichStockData(json.data.recommendations.map(r => r.symbol));
             $('#rec-count') && ($('#rec-count').textContent = `${json.data.total} 只`);
         } else {
             tbody.innerHTML = '<tr><td colspan="8" class="loading-cell">加载失败</td></tr>';
@@ -299,7 +325,7 @@ function renderRecommendationsTable(recs) {
     
     if (!sorted || sorted.length === 0) {
         tbody.innerHTML = `
-            <tr><td colspan="8">
+            <tr><td colspan="12">
                 <div class="empty-state">
                     <div class="empty-icon">🔍</div>
                     <h3>暂无符合条件的推荐</h3>
@@ -339,6 +365,10 @@ function renderRecommendationsTable(recs) {
                 <td class="${scoreClass}">${rec.final_score.toFixed(1)}</td>
                 <td class="${iasClass}">${rec.ias_score.toFixed(1)}</td>
                 <td class="${timingClass}">${rec.timing_score.toFixed(1)}</td>
+                <td class="enrich-price" data-sym="${sym}">--</td>
+                <td class="enrich-hist-high" data-sym="${sym}">--</td>
+                <td class="enrich-year-high" data-sym="${sym}">--</td>
+                <td class="enrich-pe" data-sym="${sym}">--</td>
                 <td>
                     <span style="color: ${featCount >= 5 ? 'var(--accent-green)' : 'var(--accent-yellow)'}">
                         ${featCount}/7
@@ -373,6 +403,35 @@ async function loadStockPool() {
         tbody.innerHTML = '<tr><td colspan="6" class="loading-cell">加载失败</td></tr>';
     }
 }
+
+
+// ========== 东方财富实时数据富化 ==========
+async function enrichStockData(symbols) {
+    if (!symbols || symbols.length === 0) return;
+    const unique = [...new Set(symbols)].slice(0, 10);
+    try {
+        const resp = await fetch(`/api/stocks/enrich?symbols=${unique.join(',')}`);
+        const json = await resp.json();
+        if (json.success && json.data) {
+            for (const [sym, info] of Object.entries(json.data)) {
+                if (info.error) continue;
+                $$(`.enrich-price[data-sym="${sym}"]`).forEach(el => {
+                    el.textContent = info.price ? info.price.toFixed(2) : '--';
+                });
+                $$(`.enrich-hist-high[data-sym="${sym}"]`).forEach(el => {
+                    el.textContent = info.all_time_high ? info.all_time_high.toFixed(2) : '--';
+                });
+                $$(`.enrich-year-high[data-sym="${sym}"]`).forEach(el => {
+                    el.textContent = info.year_high ? info.year_high.toFixed(2) : '--';
+                });
+                $$(`.enrich-pe[data-sym="${sym}"]`).forEach(el => {
+                    el.textContent = info.pe_ttm ? info.pe_ttm.toFixed(1) : '--';
+                });
+            }
+        }
+    } catch (err) { console.warn('富化数据获取失败:', err); }
+}
+
 
 function renderStockPoolTable(pool) {
     const tbody = $('#pool-tbody');

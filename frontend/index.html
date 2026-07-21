@@ -179,13 +179,17 @@
                                         <th class="sortable" data-sort="final_score">综合评分 ▼</th>
                                         <th class="sortable" data-sort="ias_score">IAS评分</th>
                                         <th class="sortable" data-sort="timing_score">时机评分</th>
+                                        <th>当前价</th>
+                                        <th>历史最高</th>
+                                        <th>1年最高</th>
+                                        <th>PE(TTM)</th>
                                         <th>特征匹配</th>
                                         <th>推荐等级</th>
                                         <th>操作</th>
                                     </tr>
                                 </thead>
                                 <tbody id="recommendations-tbody">
-                                    <tr><td colspan="8" class="loading-cell">加载中...</td></tr>
+                                    <tr><td colspan="12" class="loading-cell">加载中...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -248,15 +252,17 @@
                                 <li><strong>第四层：趋势Alpha (20%)</strong> — 截面动量、均线结构、成交量、波动率</li>
                                 <li><strong>事件驱动修正 (±10分)</strong></li>
                             </ul>
-                            <p><strong>双重过滤：</strong>行业评分 &lt; 60 或 公司评分 &lt; 60 → 直接淘汰</p>
+                            <p><strong>双重过滤：</strong>行业评分 &lt; 50 或 公司评分 &lt; 50 → 直接淘汰</p>
 
-                            <h5>买入时机：估值分析（满分50分）</h5>
+                            <h5>买入时机：五维估值锚定连续赋分模型（总分120分）</h5>
                             <ul>
-                                <li>历史PE分位 (20分)：0%-20%分位=20分</li>
-                                <li>行业PE比较 (10分)：≤0.8倍行业PE=10分</li>
-                                <li>均线位置 (10分)：低于MA250超10%=10分</li>
-                                <li>自由现金流收益率 (10分)：≥10%=10分</li>
+                                <li><strong>历史PE分位 (40分)</strong>：`(1-pe_pct)×40` — 越低越便宜</li>
+                                <li><strong>行业PE偏离 (30分)</strong>：折价30%满分，溢价50%零分</li>
+                                <li><strong>行业景气度 (30分)</strong>：GDP增速(5%)为基准锚</li>
+                                <li><strong>PB分位 (10分)</strong>：低PB加分</li>
+                                <li><strong>股息率 (10分)</strong>：高分红加分</li>
                             </ul>
+                            <p><strong>核心原则</strong>：越便宜→分越高，线性连续赋分，避免扎堆</p>
                             
                             <h5>7大选股特征</h5>
                             <ol>
