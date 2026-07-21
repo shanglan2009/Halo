@@ -32,19 +32,32 @@ def build_seed_stock_data(info: dict) -> dict:
     pl = "moderate" if any(k in s for k in ["半导体","芯片","新能源","AI","中药","水电","军工","银行","创新药","通信","核电","高端制造"]) else "none"
     pl = "strong" if any(k in s for k in ["半导体","芯片","AI","军工","新能源"]) else pl
     hd = d >= 3.0 or any(k in s for k in ["银行","煤炭","石油","电力","水电","通信"])
-    # === 差异化买入时机 ===
+    # === 差异化买入时机（三维估值锚定模型） ===
     vs = ["银行","煤炭","石油","水电","通信","高速公路"]
     gs = ["半导体","芯片","新能源","AI","人工智能","创新药","军工"]
-    if any(k in s for k in vs):
-        pp, pv, pr, fr = 15+d*3, 6+d*1.5, 0.95, 0.06+d*0.01
-    elif any(k in s for k in gs):
-        pp, pv, pr, fr = 55+st*0.3, 25+st*0.2, 1.15, max(0.01,0.03-st*0.002)
+    mg = ["消费","白酒","中药","家电","医药","医疗器械","调味品"]
+    
+    # 行业增速
+    if any(k in s for k in gs):
+        ig = 0.20 + st * 0.001
+    elif any(k in s for k in mg):
+        ig = 0.10 + d * 0.01
+    elif any(k in s for k in vs):
+        ig = 0.03 + d * 0.005
     else:
-        pp, pv, pr, fr = 30+(50-d*5), 12+(30-d*4), 1.0, 0.04+d*0.005
-    pp, pv = max(5,min(90,pp)), max(4,min(50,pv))
+        ig = 0.05 + d * 0.005
+    ig = max(0.01, min(0.35, ig))
+    
+    # PE百分位(0-1)和PE值
+    if any(k in s for k in vs):
+        pp, pv = 0.15+d*0.03, 6+d*1.5
+    elif any(k in s for k in gs):
+        pp, pv = 0.55+st*0.003, 25+st*0.2
+    else:
+        pp, pv = 0.30+(0.50-d*0.05), 12+(30-d*4)
+    pp, pv = max(0.05,min(0.90,pp)), max(4,min(50,pv))
     ip = pv * 1.3
-    price, mcap = 100*pr, 5000+d*1000
-    fcf_val = mcap * fr
+    
     moat = {"白酒":85,"中药":80,"水电":75,"调味品":80,"银行":70}.get(next((k for k in ["白酒","中药","水电","调味品","银行"] if k in s), ""), 50)
     g = {"家电":60,"新能源":55,"半导体":40}.get(next((k for k in ["家电","新能源","半导体"] if k in s), ""), 10)
     return {
@@ -53,7 +66,7 @@ def build_seed_stock_data(info: dict) -> dict:
         "capital": {"day20_inflow":0.05,"ema_trend":0.03,"shareholder_change":-0.02,"avg_holding_increase":0.01,"lhb_net_buy":0.1,"lhb_retail_excluded":st>5,"block_premium_pct":1,"block_institution_buy":st>10,"fund_increase_ratio":0.02,"fund_count_change":0.05},
         "momentum": {"ret_20d":0.02,"ret_60d":0.04,"ret_120d":0.06,"sector_rank_pct":55,"ma20":100,"ma60":95,"ma120":90,"ma250":85,"price":100,"vol_up_ratio":0.45,"vol_down_ratio":0.35,"atr_pct":2.5,"beta":0.9,"annual_vol":28},
         "event": {"major_order":0,"policy_support":2 if pl in ("strong","moderate") else 0,"buyback":0,"executive_buy":0,"reduction":0,"financial_risk":0,"regulatory_investigation":0},
-        "timing": {"current_pe":pv,"pe_percentile":pp,"industry_avg_pe":ip,"price":price,"ma60":price*0.98,"ma120":price*0.96,"ma250":100,"fcf":fcf_val,"market_cap":mcap},
+        "timing": {"pe_percentile":pp,"current_pe":pv,"industry_avg_pe":ip,"industry_growth":ig},
         "meta": {"symbol":info["symbol"],"name":info["name"],"sector":s,"dividend_yield":d,"state_ownership":st,"reason":info.get("reason",""),"data_source":"seed"},
     }
 

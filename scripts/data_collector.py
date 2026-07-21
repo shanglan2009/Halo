@@ -591,17 +591,12 @@ class DataCollector:
                 "financial_risk": 0,
                 "regulatory_investigation": 0,
             },
-            # 买入时机数据
+            # 买入时机数据（三维估值锚定模型）
             "timing": {
+                "pe_percentile": valuation.get("pe_percentile", 50) / 100.0,  # 转为0-1
                 "current_pe": valuation.get("current_pe", 0),
-                "pe_percentile": valuation.get("pe_percentile", 50),
                 "industry_avg_pe": 0,
-                "price": price,
-                "ma60": ma60,
-                "ma120": ma120,
-                "ma250": ma250,
-                "fcf": 0,
-                "market_cap": 0,
+                "industry_growth": 0.05,  # 默认GDP增速，真实数据需外部补充
             },
             # 元数据
             "meta": {

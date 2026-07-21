@@ -1,14 +1,13 @@
 """
 Halo - 买入时机评估模块
-估值分析（满分50分）- 不便宜不买
+三维估值锚定连续赋分模型（总分100分）
 
 核心原则：即使是优秀企业，也必须以合理甚至低估价格买入。
 
 评分组成：
-1. 历史估值分位 (20分)
-2. 行业估值比较 (10分)
-3. 均线位置 (10分)
-4. 自由现金流收益率 (10分)
+1. 历史分位连续得分 (40分) — 纵向对比：相对自己的历史贵不贵
+2. 行业PE偏离度连续得分 (30分) — 横向对比：相对同行贵不贵
+3. 行业景气度连续得分 (30分) — 成长性调整：市场为什么给这个估值
 """
 
 from dataclasses import dataclass, field
@@ -21,53 +20,49 @@ class TimingResult:
     symbol: str
     name: str
     
-    # 四项评分
-    historical_pe_score: float = 0.0     # 历史估值分位 (0-20)
-    industry_pe_score: float = 0.0       # 行业估值比较 (0-10)
-    ma_position_score: float = 0.0       # 均线位置 (0-10)
-    fcf_yield_score: float = 0.0         # 自由现金流收益率 (0-10)
+    # 三维评分 (0-100)
+    score_historical: float = 0.0   # 历史分位得分 (0-40)
+    score_industry_pe: float = 0.0  # 行业PE偏离得分 (0-30)
+    score_prosperity: float = 0.0   # 行业景气度得分 (0-30)
     
     # 原始数据
     current_pe: float = 0.0
     pe_percentile: float = 50.0
     industry_avg_pe: float = 0.0
-    pe_to_industry: float = 1.0
-    price: float = 0.0
-    ma60: float = 0.0
-    ma120: float = 0.0
-    ma250: float = 0.0
-    fcf_yield: float = 0.0
+    pe_deviation: float = 0.0       # PE偏离度 = (PE/行业PE) - 1
+    industry_growth: float = 0.0    # 行业预期净利润增速
     
     @property
     def total_score(self) -> float:
-        """买入时机总分 (0-50)"""
-        return (self.historical_pe_score + self.industry_pe_score + 
-                self.ma_position_score + self.fcf_yield_score)
+        """买入时机总分 (0-100)"""
+        return self.score_historical + self.score_industry_pe + self.score_prosperity
     
     @property
     def normalized_score(self) -> float:
-        """归一化到0-100"""
-        return (self.total_score / 50.0) * 100.0
+        """归一化到0-100（已为0-100）"""
+        return self.total_score
     
     @property
     def rating(self) -> str:
         """买入时机评级"""
         s = self.total_score
-        if s >= 45:
-            return "★★★★★ 极佳买点"
-        elif s >= 38:
-            return "★★★★ 良好买点"
-        elif s >= 30:
-            return "★★★ 合理买点"
+        if s >= 80:
+            return "★★★★★ 极度低估"
+        elif s >= 65:
+            return "★★★★ 显著低估"
+        elif s >= 50:
+            return "★★★ 合理偏低"
+        elif s >= 35:
+            return "★★ 合理偏高"
         elif s >= 20:
-            return "★★ 偏贵"
+            return "★ 偏贵"
         else:
-            return "★ 太贵"
+            return "☆ 太贵"
     
     @property
     def is_buy_zone(self) -> bool:
-        """是否处于买入区域 (>=30分)"""
-        return self.total_score >= 30
+        """是否处于买入区域 (>=50分)"""
+        return self.total_score >= 50
     
     def to_dict(self) -> dict:
         return {
@@ -78,130 +73,105 @@ class TimingResult:
             "rating": self.rating,
             "is_buy_zone": self.is_buy_zone,
             "details": {
-                "historical_pe_score": round(self.historical_pe_score, 2),
-                "industry_pe_score": round(self.industry_pe_score, 2),
-                "ma_position_score": round(self.ma_position_score, 2),
-                "fcf_yield_score": round(self.fcf_yield_score, 2),
+                "score_historical": round(self.score_historical, 2),
+                "score_industry_pe": round(self.score_industry_pe, 2),
+                "score_prosperity": round(self.score_prosperity, 2),
                 "current_pe": round(self.current_pe, 2),
                 "pe_percentile": round(self.pe_percentile, 2),
                 "industry_avg_pe": round(self.industry_avg_pe, 2),
-                "pe_to_industry": round(self.pe_to_industry, 2),
-                "fcf_yield_pct": round(self.fcf_yield * 100, 2),
-                "price": round(self.price, 2),
-                "ma250": round(self.ma250, 2),
-                "ma250_position": round(self.price / self.ma250 - 1, 4) if self.ma250 > 0 else 0
+                "pe_deviation": round(self.pe_deviation, 4),
+                "industry_growth": round(self.industry_growth, 4),
             }
         }
 
 
 class TimingEvaluator:
-    """买入时机评估器"""
+    """三维估值锚定连续赋分模型"""
     
     @staticmethod
-    def evaluate_historical_pe(current_pe: float, pe_percentile: float) -> float:
+    def score_historical(pe_percentile: float) -> float:
         """
-        历史估值分位评分 (0-20分) — 线性评分
+        维度一：历史分位连续得分 (权重40%)
         
-        分位越低越好（越便宜），线性映射：
-        pe_percentile=0   → 20分（极度低估）
-        pe_percentile=50  → 10分（合理）
-        pe_percentile=100 → 0分（极度高估）
+        公式：score = (1 - pe_percentile) × 40
+        
+        pe_percentile=0   → 40分（历史最低位）
+        pe_percentile=0.5 → 20分（历史中位）
+        pe_percentile=1.0 → 0分（历史最高位）
         """
-        if current_pe <= 0:
-            return 0.0
-        return max(0.0, min(20.0, 20.0 * (1.0 - pe_percentile / 100.0)))
+        if pe_percentile < 0:
+            return 40.0
+        return max(0.0, min(40.0, (1.0 - pe_percentile) * 40.0))
     
     @staticmethod
-    def evaluate_industry_pe(current_pe: float, industry_avg_pe: float) -> float:
+    def score_industry_pe(current_pe: float, industry_avg_pe: float) -> float:
         """
-        行业估值比较评分 (0-10分) — 线性评分
+        维度二：行业PE偏离度连续得分 (权重30%)
         
-        当前PE相对行业平均PE越便宜越好：
-        ratio=0.5 → 10分（半价）
-        ratio=1.0 → 5分（平价）
-        ratio=2.0 → 0分（2倍溢价）
+        偏离度 = (个股PE / 行业平均PE) - 1
+        
+        偏离度 ≤ -0.30（大幅折价30%+）→ 30分（满分）
+        偏离度 ≥ +0.50（溢价50%+）    → 0分
+        中间线性区：score = [1 - (偏离度 + 0.30) / 0.80] × 30
         """
         if current_pe <= 0 or industry_avg_pe <= 0:
+            return 15.0  # 数据缺失给中位分
+        
+        deviation = (current_pe / industry_avg_pe) - 1.0
+        
+        if deviation <= -0.30:
+            return 30.0
+        if deviation >= 0.50:
             return 0.0
-        ratio = current_pe / industry_avg_pe
-        return max(0.0, min(10.0, 10.0 * (1.0 - (ratio - 0.5) / 1.5)))
+        
+        # 线性区间 [-0.30, +0.50]
+        return max(0.0, min(30.0, (1.0 - (deviation + 0.30) / 0.80) * 30.0))
     
     @staticmethod
-    def evaluate_ma_position(price: float, ma60: float, ma120: float, ma250: float) -> float:
+    def score_prosperity(industry_growth: float) -> float:
         """
-        均线位置评分 (0-10分) — 线性评分
+        维度三：行业景气度连续得分 (权重30%)
         
-        低于年线越多越好（超跌机会）：
-        低于MA250 20% → 10分
-        等于MA250       → 7分
-        高于MA250 50%   → 0分
+        以GDP增速(~5%)为基准锚。
         
-        重点关注MA250（年线）
+        industry_growth ≤ -0.10（强衰退）    → 5分（保底）
+        industry_growth ≥ +0.30（高速增长）  → 30分（封顶）
+        中间线性区：score = (growth + 0.10) / 0.40 × 30
         """
-        if price <= 0 or ma250 <= 0:
-            return 0.0
-        deviation = (price - ma250) / ma250
-        # 线性：deviation=-0.2→10, deviation=0→7, deviation=0.5→0
-        return max(0.0, min(10.0, 7.0 - deviation * 14.0))
-    
-    @staticmethod
-    def evaluate_fcf_yield(fcf: float, market_cap: float) -> float:
-        """
-        自由现金流收益率评分 (0-10分) — 线性评分
+        if industry_growth <= -0.10:
+            return 5.0
+        if industry_growth >= 0.30:
+            return 30.0
         
-        收益率越高越好：
-        fcf_yield=0%    → 0分
-        fcf_yield=5%    → 5分
-        fcf_yield=10%   → 10分
-        fcf_yield≥15%   → 10分（封顶）
-        """
-        if fcf <= 0 or market_cap <= 0:
-            return 0.0
-        fcf_yield = fcf / market_cap
-        return max(0.0, min(10.0, fcf_yield * 100.0))
+        return max(5.0, min(30.0, (industry_growth + 0.10) / 0.40 * 30.0))
     
     def evaluate(self, symbol: str, name: str, data: dict) -> TimingResult:
         """
         完整买入时机评估
         
-        data参数:
+        data参数：
+        - pe_percentile: PE历史分位 (0-1)
         - current_pe: 当前PE(TTM)
-        - pe_percentile: PE历史分位 (0-100)
         - industry_avg_pe: 行业平均PE
-        - price: 当前价格
-        - ma60: 60日均线
-        - ma120: 120日均线
-        - ma250: 250日均线
-        - fcf: 自由现金流
-        - market_cap: 总市值
+        - industry_growth: 行业预期净利润增速 (如0.15=15%)
         """
+        pe_percentile = data.get("pe_percentile", 0.5)
         current_pe = data.get("current_pe", 0)
-        pe_percentile = data.get("pe_percentile", 50)
         industry_avg_pe = data.get("industry_avg_pe", 0)
-        price = data.get("price", 0)
-        ma60 = data.get("ma60", 0)
-        ma120 = data.get("ma120", 0)
-        ma250 = data.get("ma250", 0)
-        fcf = data.get("fcf", 0)
-        market_cap = data.get("market_cap", 0)
+        industry_growth = data.get("industry_growth", 0.05)
         
         result = TimingResult(symbol=symbol, name=name)
         result.current_pe = current_pe
         result.pe_percentile = pe_percentile
         result.industry_avg_pe = industry_avg_pe
-        result.price = price
-        result.ma60 = ma60
-        result.ma120 = ma120
-        result.ma250 = ma250
+        result.industry_growth = industry_growth
         
-        result.historical_pe_score = self.evaluate_historical_pe(current_pe, pe_percentile)
-        result.industry_pe_score = self.evaluate_industry_pe(current_pe, industry_avg_pe)
-        result.ma_position_score = self.evaluate_ma_position(price, ma60, ma120, ma250)
-        result.fcf_yield_score = self.evaluate_fcf_yield(fcf, market_cap)
+        if industry_avg_pe > 0:
+            result.pe_deviation = (current_pe / industry_avg_pe) - 1.0
         
-        if market_cap > 0:
-            result.fcf_yield = fcf / market_cap
-            result.pe_to_industry = current_pe / industry_avg_pe if industry_avg_pe > 0 else 0
+        result.score_historical = self.score_historical(pe_percentile)
+        result.score_industry_pe = self.score_industry_pe(current_pe, industry_avg_pe)
+        result.score_prosperity = self.score_prosperity(industry_growth)
         
         return result
 

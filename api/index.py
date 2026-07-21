@@ -230,34 +230,40 @@ def build_offline_stock_data(stock_info: dict) -> dict:
             global_base = score
             break
     
-    # === 差异化买入时机参数（基于行业特征） ===
-    # PE百分位：银行/能源最便宜，半导体/新能源最贵
-    value_sectors = ["银行", "煤炭", "石油", "水电", "高速公路", "通信"]
-    growth_sectors = ["半导体", "芯片", "新能源", "AI", "人工智能", "创新药", "军工"]
+    # === 差异化买入时机参数（三维估值锚定模型） ===
+    # 行业预期净利润增速（基于行业特征）
+    high_growth = ["半导体", "芯片", "新能源", "AI", "人工智能", "创新药"]
+    moderate_growth = ["消费", "白酒", "中药", "家电", "医药", "医疗器械", "军工", "调味品"]
+    stable_growth = ["银行", "煤炭", "石油", "水电", "通信", "保险", "高速公路"]
     
-    if any(k in sector for k in value_sectors):
-        pe_pct = 15 + (div_yield * 3)  # 高分红→低分位(便宜): 15-35
-        pe_val = 6 + div_yield * 1.5   # PE值: 6-14
-        price_ma_ratio = 0.95          # 略低于年线
-        fcf_ratio = 0.06 + div_yield * 0.01  # FCF收益率与分红正相关
-    elif any(k in sector for k in growth_sectors):
-        pe_pct = 55 + state_pct * 0.3  # 成长股分位高(贵): 55-80
-        pe_val = 25 + state_pct * 0.2  # PE值: 25-45
-        price_ma_ratio = 1.15          # 高于年线
-        fcf_ratio = max(0.01, 0.03 - state_pct * 0.002)
+    if any(k in sector for k in high_growth):
+        ind_growth = 0.20 + state_pct * 0.001  # 20-30%
+    elif any(k in sector for k in moderate_growth):
+        ind_growth = 0.10 + div_yield * 0.01   # 10-18%
+    elif any(k in sector for k in stable_growth):
+        ind_growth = 0.03 + div_yield * 0.005  # 3-8%
     else:
-        pe_pct = 30 + (50 - div_yield * 5)  # 消费/医药: 20-50
-        pe_val = 12 + (30 - div_yield * 4)  # PE值: 10-25
-        price_ma_ratio = 1.0           # 约等于年线
-        fcf_ratio = 0.04 + div_yield * 0.005
+        ind_growth = 0.05 + div_yield * 0.005  # 5-10% default
     
-    pe_pct = max(5, min(90, pe_pct))
+    ind_growth = max(0.01, min(0.35, ind_growth))
+    
+    # PE百分位 (0-1)：银行/能源最便宜，半导体/新能源最贵
+    value_secs = ["银行", "煤炭", "石油", "水电", "通信", "高速公路"]
+    growth_secs = ["半导体", "芯片", "新能源", "AI", "人工智能", "创新药", "军工"]
+    
+    if any(k in sector for k in value_secs):
+        pe_pct = 0.15 + div_yield * 0.03
+        pe_val = 6 + div_yield * 1.5
+    elif any(k in sector for k in growth_secs):
+        pe_pct = 0.55 + state_pct * 0.003
+        pe_val = 25 + state_pct * 0.2
+    else:
+        pe_pct = 0.30 + (0.50 - div_yield * 0.05)
+        pe_val = 12 + (30 - div_yield * 4)
+    
+    pe_pct = max(0.05, min(0.90, pe_pct))
     pe_val = max(4, min(50, pe_val))
-    ind_pe = pe_val * 1.3  # 行业PE略高于个股PE
-    ma250 = 100.0
-    price = ma250 * price_ma_ratio
-    mcap = 5000 + div_yield * 1000  # 市值与分红正相关
-    fcf = mcap * fcf_ratio
+    ind_pe = pe_val * 1.3
     
     return {
         "industry": {
@@ -303,10 +309,10 @@ def build_offline_stock_data(stock_info: dict) -> dict:
             "reduction": 0, "financial_risk": 0, "regulatory_investigation": 0,
         },
         "timing": {
-            "current_pe": pe_val, "pe_percentile": pe_pct,
+            "pe_percentile": pe_pct,
+            "current_pe": pe_val,
             "industry_avg_pe": ind_pe,
-            "price": price, "ma60": ma250 * 0.98, "ma120": ma250 * 0.96, "ma250": ma250,
-            "fcf": fcf, "market_cap": mcap,
+            "industry_growth": ind_growth,
         },
         "meta": {
             "symbol": stock_info["symbol"],
