@@ -122,9 +122,6 @@ function initControls() {
 }
 
 // ========== 数据加载 ==========
-async function loadAllData(forceRefresh = false) {
-    updateStatus(false, '加载中...');
-
 
 // ========== 东方财富指数（仪表盘专用） ==========
 async function fetchEastMoneyIndex(secid) {
@@ -153,8 +150,8 @@ function simBuy(symbol, name, price) {
 }
 window.simBuy = simBuy;
 
-
-    await Promise.all([
+async function loadAllData(forceRefresh = false) {
+    updateStatus(false, '加载中...');
         loadIndexData(),
         loadDashboard(),
         loadStockPool(),
