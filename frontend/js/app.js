@@ -146,6 +146,7 @@ async function loadIndexData() {
         ]);
         if (shD && !shD.error) { updateIndexCardLive('sh', shD); liveOk = true; }
         if (szD && !szD.error) { updateIndexCardLive('sz', szD); liveOk = true; }
+    } catch (err) { console.warn('实时指数获取失败:', err); }
     
     // 回退缓存（补充周期收益率数据）
     try {
