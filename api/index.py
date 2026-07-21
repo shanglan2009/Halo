@@ -12,6 +12,7 @@ import sys
 import os
 import json
 import secrets
+import copy
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -327,8 +328,9 @@ async def get_index_data(index_code: str = Query("sh000001", description="指数
             return JSONResponse({"success": True, "data": idx, "timestamp": datetime.now().isoformat()})
     
     # 内联回退
+    _lazy_import()
     if data_collector is None:
-        data = dict(FALLBACK_INDEX)
+        data = copy.deepcopy(FALLBACK_INDEX)
         if index_code == "sz399001":
             data["latest"]["close"] = 10800
         cache_set(cache_key, data)
@@ -336,8 +338,7 @@ async def get_index_data(index_code: str = Query("sh000001", description="指数
     
     data = data_collector.get_index_data(index_code)
     if "error" in data:
-        # 在线数据失败，使用回退
-        data = dict(FALLBACK_INDEX)
+        data = copy.deepcopy(FALLBACK_INDEX)
         if index_code == "sz399001":
             data["latest"]["close"] = 10800
         print(f"[WARN] 指数数据获取失败，使用回退数据", flush=True)
@@ -460,6 +461,7 @@ async def get_stock_analysis(
     - 7大特征检查
     - 机构一致性评分
     """
+    _lazy_import()
     cache_key = f"stock_{symbol}"
     if not refresh:
         cached = cache_get(cache_key)
@@ -522,6 +524,7 @@ async def batch_analysis(request: StockRecommendRequest):
     
     支持自定义股票列表
     """
+    _lazy_import()
     symbols = request.symbols
     if not symbols:
         # 默认使用优质股票池前10只
@@ -556,11 +559,15 @@ async def batch_analysis(request: StockRecommendRequest):
             stock_data["meta"]["state_ownership"] = meta.get("state_ownership", 0)
             stock_data["meta"]["reason"] = meta.get("reason", "")
         
-        rec = recommendation_engine.recommend(stock_data)
-        rec_dict = rec.to_dict()
-        if meta:
-            rec_dict["reason"] = meta.get("reason", "")
-        results.append(rec_dict)
+        try:
+            rec = recommendation_engine.recommend(stock_data)
+            rec_dict = rec.to_dict()
+            if meta:
+                rec_dict["reason"] = meta.get("reason", "")
+            results.append(rec_dict)
+        except Exception as e:
+            print(f"[ERROR] 批量评分失败 {symbol}: {e}", flush=True)
+            errors.append({"symbol": symbol, "error": "评分失败"})
     
     results.sort(key=lambda r: r["final_score"], reverse=True)
     
@@ -582,6 +589,7 @@ async def market_overview():
     
     包含上证/深成指数、行业板块表现等
     """
+    _lazy_import()
     cache_key = "market_overview"
     cached = cache_get(cache_key)
     if cached:
@@ -642,6 +650,7 @@ async def cron_refresh(
     本地开发设置 CRON_SECRET=dev 即可
     Vercel Cron Jobs 自动通过 Authorization header 发送密钥
     """
+    _lazy_import()
     if not verify_cron_secret(request):
         return JSONResponse({
             "success": False,
@@ -687,6 +696,7 @@ async def cron_refresh(
 @app.get("/api/stocks/quality-pool")
 async def get_quality_pool():
     """获取优质股票池列表"""
+    _lazy_import()
     return JSONResponse({
         "success": True,
         "data": {
@@ -712,6 +722,7 @@ async def get_quality_pool():
 @app.get("/api/sim/positions")
 async def get_sim_positions():
     """获取模拟持仓列表"""
+    _lazy_import()
     try:
         positions = sim_engine.get_all_positions()
         return JSONResponse({
@@ -729,6 +740,7 @@ async def get_sim_positions():
 @app.get("/api/sim/trades")
 async def get_sim_trades(limit: int = Query(50, description="返回记录数")):
     """获取模拟交易记录"""
+    _lazy_import()
     try:
         trades = sim_engine.get_trades(limit)
         return JSONResponse({
@@ -746,6 +758,7 @@ async def get_sim_trades(limit: int = Query(50, description="返回记录数")):
 @app.get("/api/sim/summary")
 async def get_sim_summary():
     """获取模拟交易汇总统计"""
+    _lazy_import()
     try:
         summary = sim_engine.get_summary()
         return JSONResponse({
@@ -760,6 +773,7 @@ async def get_sim_summary():
 @app.get("/api/sim/chart/{symbol}")
 async def get_sim_chart(symbol: str):
     """获取单只股票的收益曲线数据"""
+    _lazy_import()
     try:
         trades = sim_engine.get_trades_by_symbol(symbol)
         # 构建收益曲线：从买入日起按时间排列
