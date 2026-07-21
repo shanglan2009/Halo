@@ -257,7 +257,7 @@ async function loadDashboard() {
         if (json.success && json.data.recommendations) {
             state.recommendations = json.data.recommendations;
             renderQuickRecommendations(json.data.recommendations);
-            enrichStockData(json.data.recommendations.map(r => r.symbol)).then(() => {
+            enrichStockData(json.data.recommendations.map(r => r.symbol));
             $('#rec-count') && ($('#rec-count').textContent = `${json.data.recommendations.length} 只`);
         } else {
             container.innerHTML = '<div class="loading">暂无推荐数据</div>';
