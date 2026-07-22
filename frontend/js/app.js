@@ -15,6 +15,30 @@ const STOCK_POOL_API = `${API_BASE}/stocks/quality-pool`;
 const RECOMMEND_API = `${API_BASE}/stocks/recommend`;
 const INDEX_API = `${API_BASE}/index`;
 
+// ========== 内联股票池（API不可用时的保底） ==========
+const INLINE_POOL = [
+    {symbol:"600519",name:"贵州茅台",sector:"白酒/消费",dividend_yield:2.5,state_ownership:4.5,reason:"品牌护城河极深"},
+    {symbol:"000858",name:"五粮液",sector:"白酒/消费",dividend_yield:2.2,state_ownership:3.0,reason:"浓香龙头"},
+    {symbol:"600809",name:"山西汾酒",sector:"白酒/消费",dividend_yield:1.8,state_ownership:2.5,reason:"清香型龙头"},
+    {symbol:"600436",name:"片仔癀",sector:"中药/消费",dividend_yield:2.0,state_ownership:5.0,reason:"国家保密配方"},
+    {symbol:"000538",name:"云南白药",sector:"中药/消费",dividend_yield:3.5,state_ownership:10.0,reason:"百年品牌"},
+    {symbol:"600085",name:"同仁堂",sector:"中药/消费",dividend_yield:2.5,state_ownership:8.0,reason:"350年老字号"},
+    {symbol:"600900",name:"长江电力",sector:"水电/清洁能源",dividend_yield:3.8,state_ownership:55.0,reason:"永续经营"},
+    {symbol:"601088",name:"中国神华",sector:"煤炭/能源",dividend_yield:6.5,state_ownership:60.0,reason:"超高分红"},
+    {symbol:"601939",name:"建设银行",sector:"银行/金融",dividend_yield:5.8,state_ownership:60.0,reason:"国有大行"},
+    {symbol:"601398",name:"工商银行",sector:"银行/金融",dividend_yield:5.5,state_ownership:65.0,reason:"全球最大银行"},
+    {symbol:"601318",name:"中国平安",sector:"保险/金融",dividend_yield:4.2,state_ownership:5.0,reason:"综合金融"},
+    {symbol:"600690",name:"海尔智家",sector:"家电/消费",dividend_yield:3.0,state_ownership:10.0,reason:"全球化龙头"},
+    {symbol:"000333",name:"美的集团",sector:"家电/消费",dividend_yield:3.5,state_ownership:8.0,reason:"综合龙头"},
+    {symbol:"002415",name:"海康威视",sector:"AI/安防/科技",dividend_yield:2.8,state_ownership:8.0,reason:"AI视觉龙头"},
+    {symbol:"300750",name:"宁德时代",sector:"新能源/电池",dividend_yield:0.8,state_ownership:3.0,reason:"动力电池龙头"},
+    {symbol:"002594",name:"比亚迪",sector:"新能源/汽车",dividend_yield:0.5,state_ownership:2.0,reason:"新能源车龙头"},
+    {symbol:"600276",name:"恒瑞医药",sector:"医药/创新药",dividend_yield:1.2,state_ownership:3.0,reason:"创新药龙头"},
+    {symbol:"600941",name:"中国移动",sector:"通信/运营商",dividend_yield:4.5,state_ownership:70.0,reason:"数字底座"},
+    {symbol:"600887",name:"伊利股份",sector:"食品饮料/消费",dividend_yield:3.2,state_ownership:5.0,reason:"乳业龙头"},
+    {symbol:"000651",name:"格力电器",sector:"家电/消费",dividend_yield:4.5,state_ownership:15.0,reason:"空调霸主"},
+];
+
 // ========== 安全工具 ==========
 /** HTML转义，防止XSS注入 */
 function escapeHtml(str) {
@@ -163,6 +187,9 @@ async function loadAllData(forceRefresh = false) {
     
     updateStatus(true, `已连接 · ${formatTime(new Date())}`);
     state.lastRefresh = new Date();
+    
+    // 立即触发模拟买入（使用内联池数据，不等待富化）
+    INLINE_POOL.forEach(s => window.simBuy(s.symbol, s.name, 50));
 }
 
 async function loadIndexData() {
@@ -427,14 +454,15 @@ async function loadStockPool() {
     try {
         const resp = await fetch(STOCK_POOL_API);
         const json = await resp.json();
-        
-        if (json.success && json.data.pool) {
+        if (json.success && json.data.pool && json.data.pool.length > 0) {
             state.stockPool = json.data.pool;
-            renderStockPoolTable(json.data.pool);
+        } else {
+            state.stockPool = INLINE_POOL;
         }
     } catch (err) {
-        tbody.innerHTML = '<tr><td colspan="6" class="loading-cell">加载失败</td></tr>';
+        state.stockPool = INLINE_POOL;
     }
+    renderStockPoolTable(state.stockPool);
 }
 
 
